@@ -49,7 +49,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen bg-[#050010] overflow-hidden">
-      <Aurora colorStops={["#FC90AF", "#8F61DB", "#2E36AA"]} blend={0.4} amplitude={2.5} speed={0.4} />
+      <Aurora colorStops={["#FC90AF", "#8F61DB", "#2E36AA"]} blend={0.4} amplitude={2.0} speed={0.6} />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <motion.div 
