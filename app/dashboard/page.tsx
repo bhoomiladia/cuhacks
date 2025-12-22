@@ -119,7 +119,7 @@ export default function DashboardPage() {
             {/* Feature 1 & 2: Command Input Panel */}
             <div className="relative pt-8">
                {/* THE CHARACTER POUT-OUT */}
-               <div className="absolute right-8 -top-9 z-20 pointer-events-none">
+               <div className="absolute right-8 -top-13 z-20 pointer-events-none">
 
                  <motion.img 
                     initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
