@@ -3,7 +3,10 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
 :root {
   /* Light mode theme for AI Productivity Agent */
   --background: oklch(0.98 0.005 264);
