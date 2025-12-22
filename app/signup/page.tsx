@@ -18,6 +18,8 @@ export default function SignupPage() {
   const [showConfirmPass, setShowConfirmPass] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [serverError, setServerError] = useState("")
+  const [serverSuccess, setServerSuccess] = useState("")
 
   const rules = {
     length: password.length >= 8,
@@ -36,12 +38,33 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setHasSubmitted(true)
+    setServerError("")
+    setServerSuccess("")
+    
     if (Object.values(validationConditions).every(Boolean)) {
       setIsLoading(true)
-      setTimeout(() => {
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: fullName, email, password }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          setServerSuccess(data.message);
+          // Optional: Clear form or redirect after delay
+        } else {
+          setServerError(data.message || "Something went wrong");
+        }
+      } catch (error) {
+        setServerError("Failed to connect to server");
+      } finally {
         setIsLoading(false)
-        router.push("/dashboard")
-      }, 1500)
+      }
     }
   }
 
@@ -64,6 +87,18 @@ export default function SignupPage() {
         <motion.div initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ duration: 0.6 }}
           className="relative w-full max-w-[750px] bg-opacity-0 rounded-2xl p-6 sm:p-10">
           <div className="text-center text-[#8943ea] jersey-10-regular text-[4rem] sm:text-[5rem] leading-none mb-8">Join Us</div>
+
+          {serverError && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm text-center">
+              {serverError}
+            </div>
+          )}
+          
+          {serverSuccess && (
+            <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg text-green-200 text-sm text-center">
+              {serverSuccess}
+            </div>
+          )}
 
           <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">

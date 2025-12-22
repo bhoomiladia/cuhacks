@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [serverError, setServerError] = useState("")
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const isPasswordValid = password.length > 0
@@ -22,13 +23,31 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setHasSubmitted(true)
+    setServerError("")
     
     if (isEmailValid && isPasswordValid) {
       setIsLoading(true)
-      setTimeout(() => {
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          router.push("/dashboard")
+        } else {
+          setServerError(data.message || "Invalid credentials");
+        }
+      } catch (error) {
+        setServerError("Failed to connect to server");
+      } finally {
         setIsLoading(false)
-        router.push("/dashboard")
-      }, 1500)
+      }
     }
   }
 
@@ -78,7 +97,6 @@ export default function LoginPage() {
             <div>
               <div className="flex justify-between items-center mb-1 ml-1">
                 <label className="text-xs font-medium text-gray-300 uppercase tracking-widest">Password</label>
-                <Link href="/forgot-password" className="text-[10px] text-[#FC90AF] hover:text-white transition-colors">Forgot?</Link>
               </div>
               <div className="relative">
                 <input
