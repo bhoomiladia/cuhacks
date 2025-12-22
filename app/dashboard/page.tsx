@@ -4,7 +4,6 @@ import { Header } from "@/components/header"
 import { CheckCircle2, Clock, Calendar, TrendingUp, Zap, Target, Users, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import  GlareHover from "@/components/GlareHover"
 const stats = [
   { label: "Tasks Completed", value: "248", icon: CheckCircle2, change: "+12%", color: "text-green-400" },
   { label: "In Progress", value: "12", icon: Clock, change: "+3%", color: "text-primary" },
@@ -62,7 +61,7 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <div className="mb-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
-            <GlareHover 
+            <Card
             key={stat.label} className="border-2 border-border bg-card p-6">
               <div className="mb-4 flex items-center justify-between">
                 <stat.icon className={`h-8 w-8 ${stat.color}`} />
@@ -70,7 +69,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-3xl font-bold">{stat.value}</div>
               <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
-            </GlareHover>
+            </Card>
           ))}
         </div>
 
