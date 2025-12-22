@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Mic, Calendar as CalendarIcon, Check, Upload, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Mic, Calendar as CalendarIcon, Check, Upload, FileText, ChevronLeft, ChevronRight, File, FileType, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -90,14 +90,49 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [isListening, setIsListening] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const activeFieldRef = useRef<'title' | 'description' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = 'dataTransfer' in e ? 
+      (e as React.DragEvent<HTMLDivElement>).dataTransfer.files : 
+      (e as React.ChangeEvent<HTMLInputElement>).target.files;
+
+    if (files && files.length > 0) {
+      const file = files[0];
+      // Validate file type
+      const validTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/jpg'
+      ];
+      
+      if (validTypes.includes(file.type) || 
+          file.name.endsWith('.doc') || 
+          file.name.endsWith('.docx')) {
+        setSelectedFile(file);
+      } else {
+        console.error('Unsupported file type');
+      }
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
   };
 
   const removeFile = () => {
@@ -368,39 +403,74 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
 
             {/* Document Upload */}
             <div className="space-y-2">
-              <Label>Attach Document (Optional)</Label>
-              <div className="flex items-center gap-2">
+              <Label>Supporting Documents</Label>
+              <div 
+                className={cn(
+                  "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
+                  isDragging ? "border-primary bg-accent/20" : "border-border hover:border-primary/50",
+                  "flex flex-col items-center justify-center space-y-3 min-h-[180px]"
+                )}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleFileChange}
+              >
+                <div className="p-3 rounded-full bg-accent">
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    <span className="text-primary">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    PDF, DOC, DOCX, JPG, PNG (max 10MB)
+                  </p>
+                </div>
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileChange}
-                  accept=".pdf,.doc,.docx,.txt"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   className="hidden"
                   id="document-upload"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-start gap-2"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4" />
-                  <span>Upload Document</span>
-                </Button>
               </div>
+
               {selectedFile && (
-                <div className="mt-2 flex items-center justify-between rounded-md border border-border bg-accent/20 p-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="truncate">{selectedFile.name}</span>
+                <div className="mt-3">
+                  <div className="flex items-center justify-between rounded-lg border bg-background p-3 hover:bg-accent/10 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {selectedFile.type === 'application/pdf' ? (
+                        <div className="h-10 w-10 flex items-center justify-center rounded-md bg-red-50 dark:bg-red-900/20">
+                          <FileText className="h-5 w-5 text-red-500" />
+                        </div>
+                      ) : selectedFile.type.startsWith('image/') ? (
+                        <div className="h-10 w-10 flex items-center justify-center rounded-md bg-blue-50 dark:bg-blue-900/20">
+                          <ImageIcon className="h-5 w-5 text-blue-500" />
+                        </div>
+                      ) : (
+                        <div className="h-10 w-10 flex items-center justify-center rounded-md bg-blue-50 dark:bg-blue-900/20">
+                          <FileType className="h-5 w-5 text-blue-600" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(selectedFile.size / 1024).toFixed(1)} KB • {selectedFile.type.split('/').pop()?.toUpperCase()}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFile();
+                      }}
+                      className="ml-2 rounded-full p-1.5 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={removeFile}
-                    className="rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
                 </div>
               )}
             </div>
