@@ -1,21 +1,24 @@
 "use client"
 
+import { useState } from 'react';
 import { Card } from "@/components/ui/card"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CheckCircle2, Clock, Calendar, Search, Plus, Filter, MoreHorizontal } from "lucide-react"
+import { CheckCircle2, Clock, Calendar, Search, Plus, Filter, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { CreateTaskModal } from "@/components/create-task-modal";
+import { format } from 'date-fns';
 
-const tasks = [
+const initialTasks = [
   {
     id: 1,
     title: "Prepare quarterly business review presentation",
     description: "Create slides covering Q4 metrics, team achievements, and Q1 goals",
-    status: "in-progress",
-    priority: "high",
+    status: "in-progress" as const,
+    priority: "high" as const,
     dueDate: "Tomorrow",
     assignedAgent: "Executor",
     tags: ["presentation", "business"],
@@ -24,8 +27,8 @@ const tasks = [
     id: 2,
     title: "Send follow-up emails to prospective clients",
     description: "Personalized follow-ups to 12 leads from last week's conference",
-    status: "pending",
-    priority: "medium",
+    status: "pending" as const,
+    priority: "medium" as const,
     dueDate: "Today",
     assignedAgent: "Planner",
     tags: ["email", "sales"],
@@ -34,8 +37,8 @@ const tasks = [
     id: 3,
     title: "Review and approve team vacation requests",
     description: "Process 5 pending vacation requests for January",
-    status: "pending",
-    priority: "low",
+    status: "pending" as const,
+    priority: "low" as const,
     dueDate: "This Week",
     assignedAgent: "Verifier",
     tags: ["hr", "admin"],
@@ -44,8 +47,8 @@ const tasks = [
     id: 4,
     title: "Update customer database with new contacts",
     description: "Import 47 new contacts from recent trade show",
-    status: "completed",
-    priority: "medium",
+    status: "completed" as const,
+    priority: "medium" as const,
     dueDate: "Yesterday",
     assignedAgent: "Executor",
     tags: ["database", "crm"],
@@ -54,18 +57,52 @@ const tasks = [
     id: 5,
     title: "Schedule Q1 planning meetings with department heads",
     description: "Coordinate calendars and book conference rooms for 6 meetings",
-    status: "completed",
-    priority: "high",
+    status: "completed" as const,
+    priority: "high" as const,
     dueDate: "2 days ago",
     assignedAgent: "Planner",
     tags: ["scheduling", "meetings"],
   },
 ]
 
+interface Task {
+  id: number;
+  title: string;
+  description: string;
+  status: 'pending' | 'in-progress' | 'completed';
+  priority: 'low' | 'medium' | 'high';
+  dueDate: string;
+  assignedAgent: string;
+  tags: string[];
+}
+
 export default function TasksPage() {
-  const pendingTasks = tasks.filter((t) => t.status === "pending")
-  const inProgressTasks = tasks.filter((t) => t.status === "in-progress")
-  const completedTasks = tasks.filter((t) => t.status === "completed")
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [taskList, setTaskList] = useState<Task[]>(initialTasks);
+  
+  const pendingTasks = taskList.filter((t) => t.status === "pending");
+  const inProgressTasks = taskList.filter((t) => t.status === "in-progress");
+  const completedTasks = taskList.filter((t) => t.status === "completed");
+  
+  const handleCreateTask = (newTask: {
+    title: string;
+    description: string;
+    dueDate: Date | null;
+    priority: 'low' | 'medium' | 'high';
+  }) => {
+    const task: Task = {
+      id: Date.now(),
+      title: newTask.title,
+      description: newTask.description,
+      status: 'pending',
+      priority: newTask.priority,
+      dueDate: newTask.dueDate ? format(newTask.dueDate, 'MMM d, yyyy') : 'No due date',
+      assignedAgent: 'Planner',
+      tags: ['new'],
+    };
+    
+    setTaskList(prev => [task, ...prev]);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,7 +113,10 @@ export default function TasksPage() {
             <h1 className="mb-2 text-3xl font-bold">Tasks</h1>
             <p className="text-muted-foreground">Manage and track all your automated tasks</p>
           </div>
-          <Button className="gap-2">
+          <Button 
+            className="gap-2"
+            onClick={() => setIsCreateModalOpen(true)}
+          >
             <Plus className="h-4 w-4" />
             New Task
           </Button>
@@ -99,14 +139,14 @@ export default function TasksPage() {
         {/* Tasks Tabs */}
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="mb-6 grid w-full grid-cols-4 lg:w-[500px]">
-            <TabsTrigger value="all">All ({tasks.length})</TabsTrigger>
+            <TabsTrigger value="all">All ({taskList.length})</TabsTrigger>
             <TabsTrigger value="pending">Pending ({pendingTasks.length})</TabsTrigger>
             <TabsTrigger value="progress">In Progress ({inProgressTasks.length})</TabsTrigger>
             <TabsTrigger value="completed">Completed ({completedTasks.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">
-            {tasks.map((task) => (
+            {taskList.map((task) => (
               <TaskCard key={task.id} task={task} />
             ))}
           </TabsContent>
@@ -130,11 +170,21 @@ export default function TasksPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSave={(newTask) => {
+          handleCreateTask(newTask);
+          setIsCreateModalOpen(false);
+        }}
+      />
     </div>
   )
 }
 
-function TaskCard({ task }: { task: any }) {
+function TaskCard({ task }: { task: Task }) {
   return (
     <Card className="border-2 border-border bg-card p-6 transition-all hover:border-primary/50">
       <div className="flex items-start justify-between">
