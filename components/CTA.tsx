@@ -24,7 +24,7 @@ export const FinalCTA = () => {
         whileInView={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.8 }}
         // Updated to Tailwind v4 canonical classes per your error log
-        className="relative overflow-hidden rounded-[48px] border border-white/10 bg-linear-to-b from-white/5 to-transparent backdrop-blur-3xl p-12 md:p-24 text-center"
+        className="relative overflow-hidden rounded-[48px] border border-white/10 bg-linear-to-b from-white/5 to-transparent backdrop-blur-sm p-12 md:p-24 text-center"
       >
         {/* The Soundwave Visualizer */}
         <div className="flex items-center justify-center gap-1.5 mb-10 h-12">
