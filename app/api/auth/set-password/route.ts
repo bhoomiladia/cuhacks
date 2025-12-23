@@ -4,6 +4,12 @@ import User from '@/models/User';
 import bcrypt from 'bcryptjs';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+interface DecodedToken {
+  userId: string;
+  email: string;
+  iat?: number;
+  exp?: number;
+}
 
 export async function POST(req: Request) {
   try {
@@ -28,12 +34,16 @@ export async function POST(req: Request) {
     }
 
     const decoded = verifyToken(token);
-    if (!decoded || !decoded.userId) {
+    
+    // Type guard to check if decoded is valid and has userId
+    if (!decoded || typeof decoded === 'string' || !('userId' in decoded)) {
       return NextResponse.json(
         { message: 'Invalid token' },
         { status: 401 }
       );
     }
+    const tokenPayload = decoded as DecodedToken;
+    const userId = tokenPayload.userId;
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
