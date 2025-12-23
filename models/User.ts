@@ -15,7 +15,19 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Please provide a password'],
+    required: function(this: any) {
+      return this.authProvider !== 'google';
+    },
+  },
+  authProvider: {
+    type: String,
+    enum: ['email', 'google'],
+    default: 'email',
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
   },
   isVerified: {
     type: Boolean,
