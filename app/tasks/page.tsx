@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Card } from "@/components/ui/card"
-import { Header } from "@/components/header-in"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -106,7 +105,6 @@ export default function TasksPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
