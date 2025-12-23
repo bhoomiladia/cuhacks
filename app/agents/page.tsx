@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card"
-import { Header } from "@/components/header"
+import { Header } from "@/components/header-in"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
