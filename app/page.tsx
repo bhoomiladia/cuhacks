@@ -30,19 +30,17 @@ export default function DemoOne() {
   };
 
   const handleReset = () => {
-    // 1. Scroll to top first
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
-    // 2. Small timeout to allow the scroll to finish before resetting states
+  
     setTimeout(() => {
       setShowWebsite(false);
       setIsStarted(false);
-    }, 500); // Adjust based on scroll distance/speed
+    }, 500); 
   };
   const DURATION = 2.5; 
   const DELAY = 0.1;
-
-  // Handles the logic to show the website after animation finishes
  
 
   const textContent = (isReflected = false) => (
@@ -143,8 +141,6 @@ export default function DemoOne() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Website Content - Only shows after animation finishes */}
         <AnimatePresence>
           {showWebsite && (
             <motion.div
@@ -158,7 +154,6 @@ export default function DemoOne() {
               <AgentFlow />
               <FinalCTA />
               <Footer/>
-              {/* You can add AgentFlow and Features here later */}
             </motion.div>
           )}
         </AnimatePresence>
