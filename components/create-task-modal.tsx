@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Mic, Calendar as CalendarIcon, Check, Upload, FileText, ChevronLeft, ChevronRight, FileType, Image as ImageIcon } from 'lucide-react';
+import { X, Mic, Calendar as CalendarIcon, Check, Upload, FileText, ChevronLeft, ChevronRight, FileType, Image as ImageIcon, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,21 +12,16 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+
 // Type definitions for Web Speech API
-declare class SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onstart: (() => void) | null;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
 }
 
-interface SpeechRecognitionEvent {
+interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
   resultIndex: number;
 }
@@ -54,17 +49,17 @@ interface SpeechRecognitionErrorEvent extends Event {
   message: string;
 }
 
-declare global {
-  interface Window {
-    SpeechRecognition: {
-      prototype: SpeechRecognition;
-      new (): SpeechRecognition;
-    };
-    webkitSpeechRecognition: {
-      prototype: SpeechRecognition;
-      new (): SpeechRecognition;
-    };
-  }
+class SpeechRecognition extends EventTarget {
+  continuous: boolean = false;
+  interimResults: boolean = false;
+  lang: string = 'en-US';
+  onstart: (() => void) | null = null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null = null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null = null;
+  onend: (() => void) | null = null;
+  start: () => void = () => {};
+  stop: () => void = () => {};
+  abort: () => void = () => {};
 }
 
 interface CreateTaskModalProps {
@@ -78,11 +73,6 @@ interface CreateTaskModalProps {
   }) => void;
 }
 
-const formatDate = (date: Date | null | undefined): string => {
-  if (!date) return 'No date selected';
-  return format(date, 'PPP');
-};
-
 export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -91,9 +81,12 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
   const [isListening, setIsListening] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [interimResult, setInterimResult] = useState('');
+  
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const activeFieldRef = useRef<'title' | 'description' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -148,6 +141,11 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
       if (e.key === 'Escape') {
         onClose();
       }
+      // Stop recognition with Ctrl+Space
+      if (e.key === ' ' && e.ctrlKey && isListening) {
+        e.preventDefault();
+        stopRecognition();
+      }
     };
 
     if (isOpen) {
@@ -162,7 +160,7 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
       document.body.style.overflow = 'auto';
       stopRecognition();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isListening]);
 
   // Clean up recognition on unmount
   useEffect(() => {
@@ -172,31 +170,38 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
   }, []);
 
   const startRecognition = (field: 'title' | 'description') => {
-    // Stop any existing recognition first
     stopRecognition();
     
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
       console.error('Speech recognition not supported in this browser');
+      alert('Speech recognition is not supported in your browser. Please try Chrome or Edge.');
       return;
     }
-  
-    const recognition = new SpeechRecognition();
-    // Set continuous to true to keep listening
+
+    const recognition = new SpeechRecognitionAPI();
     recognition.continuous = true;
-    recognition.interimResults = true; // Show interim results
+    recognition.interimResults = true;
     recognition.lang = 'en-US';
-  
+
     recognition.onstart = () => {
       activeFieldRef.current = field;
       setIsListening(true);
-      console.log('Speech recognition started');
+      setInterimResult('');
+      
+      // Set timeout to auto-stop after 30 seconds
+      recognitionTimeoutRef.current = setTimeout(() => {
+        if (isListening) {
+          console.log('Auto-stopping recognition after timeout');
+          stopRecognition();
+        }
+      }, 30000);
     };
-  
+
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interimTranscript = '';
       let finalTranscript = '';
-  
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
@@ -205,83 +210,137 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
           interimTranscript += transcript;
         }
       }
-  
-      // Update the appropriate field
-      if (activeFieldRef.current === 'title') {
-        setTitle(prev => {
-          const base = prev || '';
-          return base + (finalTranscript || interimTranscript);
-        });
-      } else if (activeFieldRef.current === 'description') {
-        setDescription(prev => {
-          const base = prev || '';
-          return base + (finalTranscript || interimTranscript);
-        });
+
+      setInterimResult(interimTranscript);
+
+      if (finalTranscript) {
+        if (activeFieldRef.current === 'title') {
+          setTitle(prev => {
+            const base = prev || '';
+            return base + finalTranscript;
+          });
+        } else if (activeFieldRef.current === 'description') {
+          setDescription(prev => {
+            const base = prev || '';
+            return base + finalTranscript;
+          });
+        }
+        setInterimResult('');
       }
     };
-  
+
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error, event.message);
+      console.error('Speech recognition error:', event.error);
       
-      // Don't stop on all errors - some are recoverable
-      if (event.error === 'no-speech' || event.error === 'audio-capture') {
-        // These errors might be temporary, keep recognition alive
-        console.log('Temporary error, continuing...');
-      } else {
-        stopRecognition();
+      // Handle specific errors
+      switch (event.error) {
+        case 'no-speech':
+          console.log('No speech detected');
+          break;
+        case 'audio-capture':
+          console.log('No microphone found or permission denied');
+          alert('Please check your microphone permissions.');
+          break;
+        case 'not-allowed':
+          console.log('Permission to use microphone was denied');
+          alert('Microphone permission was denied. Please allow microphone access.');
+          break;
+        default:
+          console.log('Speech recognition error:', event.error);
       }
+      
+      stopRecognition();
     };
-  
+
     recognition.onend = () => {
       console.log('Speech recognition ended');
-      // Only reset if it wasn't manually stopped
       if (recognitionRef.current === recognition) {
         stopRecognition();
       }
     };
-  
+
     try {
       recognition.start();
       recognitionRef.current = recognition;
     } catch (error) {
       console.error('Error starting speech recognition:', error);
+      alert('Failed to start speech recognition. Please try again.');
       stopRecognition();
     }
   };
-  
+
   const stopRecognition = () => {
+    if (recognitionTimeoutRef.current) {
+      clearTimeout(recognitionTimeoutRef.current);
+      recognitionTimeoutRef.current = null;
+    }
+    
     if (recognitionRef.current) {
       try {
-        // Remove event listeners first to prevent onend from triggering
-        recognitionRef.current.onend = null;
-        recognitionRef.current.onerror = null;
-        recognitionRef.current.onresult = null;
-        recognitionRef.current.onstart = null;
+        // Clone the recognition instance before modifying
+        const recognition = recognitionRef.current;
+        recognitionRef.current = null;
         
-        recognitionRef.current.stop();
-        recognitionRef.current.abort();
+        // Remove event listeners
+        recognition.onend = null;
+        recognition.onerror = null;
+        recognition.onresult = null;
+        recognition.onstart = null;
+        
+        // Stop recognition
+        recognition.stop();
+        setTimeout(() => {
+          try {
+            recognition.abort();
+          } catch (e) {
+            // Ignore abort errors
+          }
+        }, 100);
       } catch (error) {
-        // Ignore errors when stopping
+        console.error('Error stopping recognition:', error);
       }
-      recognitionRef.current = null;
     }
+    
     activeFieldRef.current = null;
     setIsListening(false);
+    setInterimResult('');
+  };
+
+  const toggleRecognition = (field: 'title' | 'description') => {
+    if (isListening && activeFieldRef.current === field) {
+      stopRecognition();
+    } else {
+      // Focus the field first
+      const element = field === 'title' 
+        ? document.getElementById('title')
+        : document.getElementById('description');
+      
+      if (element) {
+        element.focus();
+      }
+      
+      // Start recognition
+      startRecognition(field);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    stopRecognition();
+    
     onSave({
       title: title.trim(),
       description: description.trim(),
       dueDate,
       priority
     });
+    
     // Reset form
     setTitle('');
     setDescription('');
     setDueDate(null);
     setPriority('medium');
+    setSelectedFile(null);
     onClose();
   };
 
@@ -310,7 +369,10 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
             <p className="text-[10px] uppercase tracking-[0.2em] text-[#FC90AF] font-bold mt-0.5">Initialize Neural Pipeline</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => {
+              stopRecognition();
+              onClose();
+            }}
             className="rounded-full p-2 text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
             aria-label="Close"
           >
@@ -325,26 +387,62 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
             {/* Title Field */}
             <div className="space-y-2">
               <Label htmlFor="title" className="text-xs font-bold uppercase tracking-widest text-gray-400">Task Title</Label>
-              <div className="relative group">
+              <div className="relative">
                 <Input
                   id="title"
                   value={title}
                   onChange={handleTitleChange}
                   placeholder="Speak or type task title"
                   required
-                  className="h-12 bg-white/5 border-white/10 rounded-xl focus:border-[#FC90AF]/50 focus:ring-0 text-white placeholder:text-gray-600 transition-all pr-10"
+                  className="h-12 bg-white/5 border-white/10 rounded-xl focus:border-[#FC90AF]/50 focus:ring-0 text-white placeholder:text-gray-600 transition-all pr-24"
+                  onFocus={() => {
+                    if (!isListening) {
+                      activeFieldRef.current = 'title';
+                    }
+                  }}
                 />
-                <button
-                  type="button"
-                  onClick={() => startRecognition('title')}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-all ${isListening && activeFieldRef.current === 'title' ? 'bg-[#FC90AF] text-[#15151b] animate-pulse' : 'text-gray-500 hover:bg-white/10'}`}
-                >
-                  <Mic className="h-4 w-4" />
-                </button>
-                {isListening && (
-                  <span className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#FC90AF] animate-pulse">
-                    LISTENING...
-                  </span>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {isListening && activeFieldRef.current === 'title' && (
+                    <>
+                      <span className="text-[10px] font-bold text-[#FC90AF] animate-pulse whitespace-nowrap">
+                        LISTENING...
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          stopRecognition();
+                        }}
+                        className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+                        title="Stop listening"
+                      >
+                        <Square className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleRecognition('title');
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className={`p-1.5 rounded-lg transition-all ${
+                      isListening && activeFieldRef.current === 'title' 
+                        ? 'bg-[#FC90AF] text-[#15151b] animate-pulse' 
+                        : 'text-gray-500 hover:bg-white/10 hover:text-white'
+                    }`}
+                    title={isListening && activeFieldRef.current === 'title' ? "Stop voice input" : "Start voice input"}
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+                </div>
+                {interimResult && activeFieldRef.current === 'title' && (
+                  <div className="absolute -bottom-6 left-0 right-0 text-xs text-gray-400 truncate">
+                    <span className="italic">Live: </span>{interimResult}
+                  </div>
                 )}
               </div>
             </div>
@@ -359,88 +457,123 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
                   onChange={handleDescriptionChange}
                   placeholder="Describe the task for AI agents"
                   rows={4}
-                  className="bg-white/5 border-white/10 rounded-xl focus:border-[#FC90AF]/50 focus:ring-0 text-white placeholder:text-gray-600 transition-all resize-none pr-10"
+                  className="bg-white/5 border-white/10 rounded-xl focus:border-[#FC90AF]/50 focus:ring-0 text-white placeholder:text-gray-600 transition-all resize-none pr-24"
+                  onFocus={() => {
+                    if (!isListening) {
+                      activeFieldRef.current = 'description';
+                    }
+                  }}
                 />
-                <button
-                  type="button"
-                  onClick={() => startRecognition('description')}
-                  className={`absolute right-3 bottom-3 rounded-lg p-1.5 transition-all ${isListening && activeFieldRef.current === 'description' ? 'bg-[#FC90AF] text-[#15151b] animate-pulse' : 'text-gray-500 hover:bg-white/10'}`}
-                >
-                  <Mic className="h-4 w-4" />
-                </button>
-                {isListening && activeFieldRef.current === 'description' && (
-                  <span className="absolute right-12 bottom-4 text-[10px] font-bold text-[#FC90AF] animate-pulse">
-                    LISTENING...
-                  </span>
+                <div className="absolute right-3 bottom-3 flex items-center gap-2">
+                  {isListening && activeFieldRef.current === 'description' && (
+                    <>
+                      <span className="text-[10px] font-bold text-[#FC90AF] animate-pulse whitespace-nowrap">
+                        LISTENING...
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          stopRecognition();
+                        }}
+                        className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+                        title="Stop listening"
+                      >
+                        <Square className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleRecognition('description');
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className={`p-1.5 rounded-lg transition-all ${
+                      isListening && activeFieldRef.current === 'description' 
+                        ? 'bg-[#FC90AF] text-[#15151b] animate-pulse' 
+                        : 'text-gray-500 hover:bg-white/10 hover:text-white'
+                    }`}
+                    title={isListening && activeFieldRef.current === 'description' ? "Stop voice input" : "Start voice input"}
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+                </div>
+                {interimResult && activeFieldRef.current === 'description' && (
+                  <div className="absolute -bottom-6 left-0 right-0 text-xs text-gray-400">
+                    <span className="italic">Live: </span>{interimResult}
+                  </div>
                 )}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
- {/* Due Date Field */}
-<div className="space-y-2">
-  <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">Due Date</Label>
-  <Popover>
-    <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        className={cn(
-          "w-full justify-start text-left font-medium bg-white/5 border-white/10 rounded-xl hover:bg-white/10 hover:text-white h-12 transition-all",
-          !dueDate && "text-gray-600"
-        )}
-      >
-        <CalendarIcon className="mr-2 h-4 w-4 text-[#FC90AF]" />
-        <span className="truncate text-xs">
-          {dueDate ? format(dueDate, "MMM dd, yyyy") : "Pick date"}
-        </span>
-      </Button>
-    </PopoverTrigger>
-    <PopoverContent 
-      className="w-auto p-0 bg-[#15151b]/90 backdrop-blur-xl border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-2xl overflow-hidden" 
-      align="start"
-    >
-      <Calendar
-        mode="single"
-        selected={dueDate || undefined}
-        onSelect={(date: Date | undefined) => setDueDate(date || null)}
-        initialFocus
-        className="p-3"
-        classNames={{
-          months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-          month: "space-y-4",
-          caption: "flex justify-center pt-2 relative items-center px-8",
-          caption_label: "text-sm font-black uppercase tracking-widest text-white",
-          nav: "space-x-1 flex items-center",
-          nav_button: "h-8 w-8 bg-white/5 p-0 text-gray-400 hover:text-[#FC90AF] hover:bg-white/10 rounded-lg transition-all",
-          nav_button_previous: "absolute left-1",
-          nav_button_next: "absolute right-1",
-          table: "w-full border-collapse space-y-1",
-          head_row: "flex mb-2",
-          // FIXED: This ensures Mon, Tue, etc. are visible (gray-400)
-          head_cell: "text-gray-400 rounded-md w-9 font-bold text-[10px] uppercase tracking-tighter",
-          row: "flex w-full mt-1",
-          cell: "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
-          // FIXED: Default day color
-          day: "h-9 w-9 p-0 font-medium text-gray-300 hover:bg-[#FC90AF]/20 hover:text-[#FC90AF] rounded-xl transition-all",
-          day_selected: "bg-[#FC90AF] text-[#15151b] hover:bg-[#FC90AF] hover:text-[#15151b] focus:bg-[#FC90AF] focus:text-[#15151b] font-black rounded-xl shadow-[0_0_15px_rgba(252,144,175,0.4)]",
-          day_today: "bg-white/10 text-[#FC90AF] border border-[#FC90AF]/30",
-          // FIXED: Days from other months
-          day_outside: "text-gray-700 opacity-30",
-          day_disabled: "text-gray-800 opacity-50",
-          day_hidden: "invisible",
-        }}
-        components={{
-          Chevron: ({ ...props }) => {
-            if (props.orientation === 'left') {
-              return <ChevronLeft className="h-4 w-4" {...props} />;
-            }
-            return <ChevronRight className="h-4 w-4" {...props} />;
-          }
-        }}
-      />
-    </PopoverContent>
-  </Popover>
-</div>
+              {/* Due Date Field */}
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">Due Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-medium bg-white/5 border-white/10 rounded-xl hover:bg-white/10 hover:text-white h-12 transition-all",
+                        !dueDate && "text-gray-600"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4 text-[#FC90AF]" />
+                      <span className="truncate text-xs">
+                        {dueDate ? format(dueDate, "MMM dd, yyyy") : "Pick date"}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent 
+                    className="w-auto p-0 bg-[#15151b]/90 backdrop-blur-xl border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-2xl overflow-hidden" 
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={dueDate || undefined}
+                      onSelect={(date: Date | undefined) => {
+                        setDueDate(date || null);
+                      }}
+                      initialFocus
+                      className="p-3"
+                      classNames={{
+                        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                        month: "space-y-4",
+                        caption: "flex justify-center pt-2 relative items-center px-8",
+                        caption_label: "text-sm font-black uppercase tracking-widest text-white",
+                        nav: "space-x-1 flex items-center",
+                        nav_button: "h-8 w-8 bg-white/5 p-0 text-gray-400 hover:text-[#FC90AF] hover:bg-white/10 rounded-lg transition-all",
+                        nav_button_previous: "absolute left-1",
+                        nav_button_next: "absolute right-1",
+                        table: "w-full border-collapse space-y-1",
+                        head_row: "flex mb-2",
+                        head_cell: "text-gray-400 rounded-md w-9 font-bold text-[10px] uppercase tracking-tighter",
+                        row: "flex w-full mt-1",
+                        cell: "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
+                        day: "h-9 w-9 p-0 font-medium text-gray-300 hover:bg-[#FC90AF]/20 hover:text-[#FC90AF] rounded-xl transition-all",
+                        day_selected: "bg-[#FC90AF] text-[#15151b] hover:bg-[#FC90AF] hover:text-[#15151b] focus:bg-[#FC90AF] focus:text-[#15151b] font-black rounded-xl shadow-[0_0_15px_rgba(252,144,175,0.4)]",
+                        day_today: "bg-white/10 text-[#FC90AF] border border-[#FC90AF]/30",
+                        day_outside: "text-gray-700 opacity-30",
+                        day_disabled: "text-gray-800 opacity-50",
+                        day_hidden: "invisible",
+                      }}
+                      components={{
+                        Chevron: ({ ...props }) => {
+                          if (props.orientation === 'left') {
+                            return <ChevronLeft className="h-4 w-4" {...props} />;
+                          }
+                          return <ChevronRight className="h-4 w-4" {...props} />;
+                        }
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
 
               {/* Priority Field */}
               <div className="space-y-2">
@@ -546,7 +679,10 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
             <Button 
               type="button" 
               variant="outline" 
-              onClick={onClose} 
+              onClick={() => {
+                stopRecognition();
+                onClose();
+              }} 
               className="flex-1 h-12 border-white/10 bg-transparent text-gray-400 hover:bg-white/5 rounded-xl font-bold"
             >
               Cancel
