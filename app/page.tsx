@@ -3,8 +3,8 @@
 import ShaderCanvas from "@/components/dynamic-waveform";
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HeroContent } from "@/components/Hero";
-import { Header } from "@/components/Header"; 
+import { HeroContent } from "@/components/hero";
+import { Header } from "@/components/header"; 
 import { Footer } from "@/components/Footer"; 
 import { AgentFlow } from "@/components/AgentFlow"; 
 import { FinalCTA } from "@/components/CTA";
