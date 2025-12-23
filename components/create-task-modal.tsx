@@ -12,7 +12,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-
 // Type definitions for Web Speech API
 declare class SpeechRecognition extends EventTarget {
   continuous: boolean;
@@ -173,6 +172,7 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
   }, []);
 
   const startRecognition = (field: 'title' | 'description') => {
+    // Stop any existing recognition first
     stopRecognition();
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -180,35 +180,66 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
       console.error('Speech recognition not supported in this browser');
       return;
     }
-
+  
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    // Set continuous to true to keep listening
+    recognition.continuous = true;
+    recognition.interimResults = true; // Show interim results
     recognition.lang = 'en-US';
-
+  
     recognition.onstart = () => {
       activeFieldRef.current = field;
       setIsListening(true);
+      console.log('Speech recognition started');
     };
-
+  
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript;
+      let interimTranscript = '';
+      let finalTranscript = '';
+  
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+  
+      // Update the appropriate field
       if (activeFieldRef.current === 'title') {
-        setTitle(prev => prev ? `${prev} ${transcript}` : transcript);
+        setTitle(prev => {
+          const base = prev || '';
+          return base + (finalTranscript || interimTranscript);
+        });
       } else if (activeFieldRef.current === 'description') {
-        setDescription(prev => prev ? `${prev} ${transcript}` : transcript);
+        setDescription(prev => {
+          const base = prev || '';
+          return base + (finalTranscript || interimTranscript);
+        });
       }
     };
-
-    recognition.onend = () => {
-      stopRecognition();
-    };
-
+  
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error', event.error);
-      stopRecognition();
+      console.error('Speech recognition error:', event.error, event.message);
+      
+      // Don't stop on all errors - some are recoverable
+      if (event.error === 'no-speech' || event.error === 'audio-capture') {
+        // These errors might be temporary, keep recognition alive
+        console.log('Temporary error, continuing...');
+      } else {
+        stopRecognition();
+      }
     };
-
+  
+    recognition.onend = () => {
+      console.log('Speech recognition ended');
+      // Only reset if it wasn't manually stopped
+      if (recognitionRef.current === recognition) {
+        stopRecognition();
+      }
+    };
+  
     try {
       recognition.start();
       recognitionRef.current = recognition;
@@ -217,13 +248,20 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
       stopRecognition();
     }
   };
-
+  
   const stopRecognition = () => {
     if (recognitionRef.current) {
       try {
+        // Remove event listeners first to prevent onend from triggering
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onstart = null;
+        
         recognitionRef.current.stop();
+        recognitionRef.current.abort();
       } catch (error) {
-        // Ignore errors when stopping already stopped recognition
+        // Ignore errors when stopping
       }
       recognitionRef.current = null;
     }
@@ -303,7 +341,7 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
                 >
                   <Mic className="h-4 w-4" />
                 </button>
-                {isListening && activeFieldRef.current === 'title' && (
+                {isListening && (
                   <span className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#FC90AF] animate-pulse">
                     LISTENING...
                   </span>
