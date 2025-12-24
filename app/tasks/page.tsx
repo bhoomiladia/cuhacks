@@ -2,24 +2,17 @@
 
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { 
-  Plus, Search, Filter, CheckCircle2, 
-  Clock, Calendar, MoreHorizontal, 
-  ChevronLeft, ChevronRight, Home,
-  PieChart, Users, Settings, LogOut,
-  Mail, FileText, Activity, ShieldCheck, CheckSquare, HelpCircle
-} from "lucide-react"
+import {   Plus, Search, CheckCircle2,   Clock, Calendar, MoreHorizontal, ChevronLeft, ChevronRight, Home, PieChart, Users, Settings, LogOut, Mail, FileText, Activity, CheckSquare, HelpCircle} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs"
 import { TabsList } from "@/components/ui/glass/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar,  AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { CreateTaskModal } from "@/components/create-task-modal"
-// import dynamic from "next/dynamic"
 import { format } from 'date-fns'
 import  GlassSurface  from "@/components/GlassSurface"
-
+import Link from "next/link"
 // --- Types & Initial Data ---
 interface Task {
   id: number;
@@ -83,6 +76,16 @@ export default function TasksPage() {
     const formattedDate = time.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' })
     const formattedTime = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
+      const navItems = [
+        { icon: Home, label: "Dashboard", href: "/dashboard" },
+        { icon: CheckCircle2, label: "Tasks", href: "/tasks" },
+        { icon: FileText, label: "Notes", href: "/notes" },
+        { icon: Mail, label: "Emails", href: "/emails" },
+        { icon: Activity, label: "Activity Log", href: "/activity" },
+        { icon: PieChart, label: "Analytics", href: "/analytics" },
+        { icon: Users, label: "Integrations", href: "/integrations" },
+        { icon: HelpCircle, label: "Help / How it works", href: "/help" },
+      ]
   // --- Logic: Filtering ---
   const filteredTasks = taskList.filter(task => 
     task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -167,27 +170,20 @@ export default function TasksPage() {
 
   {/* Navigation */}
   <div className="flex flex-col gap-3 mt-6">
-    {[
-      { icon: Home, label: "Dashboard" },
-      { icon: CheckCircle2, label: "Tasks" },
-      { icon: FileText, label: "Notes" },
-      { icon: Mail, label: "Emails" },
-      { icon: Activity, label: "Activity Log" },
-      { icon: PieChart, label: "Analytics" },
-      { icon: Users, label: "Integrations" },
-      { icon: HelpCircle, label: "Help / How it works" },
-    ].map(({ icon: Icon, label }) => (
-      <div
-        key={label}
-        className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer"
-      >
-        <Icon size={18} />
-        {isSidebarOpen && (
-          <span className="text-sm text-gray-300">{label}</span>
-        )}
-      </div>
-    ))}
-  </div>
+  {navItems.map(({ icon: Icon, label, href }) => (
+    <Link
+      key={label}
+      href={href}
+      className="flex items-center gap-3 px-3 py-2 rounded-xl 
+                 hover:bg-white/5 cursor-pointer transition"
+    >
+      <Icon size={18} />
+      {isSidebarOpen && (
+        <span className="text-sm text-gray-300">{label}</span>
+      )}
+    </Link>
+  ))}
+</div>
 
   {/* Bottom */}
   <div className="mt-auto flex flex-col gap-4">

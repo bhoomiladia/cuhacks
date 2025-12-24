@@ -9,6 +9,7 @@ import {
  Plus, Send, HelpCircle, FileText, Activity
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Link from "next/link"
 
 export default function DashboardPage() {
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
@@ -23,7 +24,16 @@ export default function DashboardPage() {
   const formattedDate = time.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' })
   const formattedTime = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-
+  const navItems = [
+    { icon: Home, label: "Dashboard", href: "/dashboard" },
+    { icon: CheckCircle2, label: "Tasks", href: "/tasks" },
+    { icon: FileText, label: "Notes", href: "/notes" },
+    { icon: Mail, label: "Emails", href: "/emails" },
+    { icon: Activity, label: "Activity Log", href: "/activity" },
+    { icon: PieChart, label: "Analytics", href: "/analytics" },
+    { icon: Users, label: "Integrations", href: "/integrations" },
+    { icon: HelpCircle, label: "Help / How it works", href: "/help" },
+  ]
   return (
     <div className="flex h-screen bg-[#15151b] overflow-hidden text-white font-sans selection:bg-[#FC90AF]/30">
       
@@ -66,29 +76,21 @@ export default function DashboardPage() {
     )}
   </div>
 
-  {/* Navigation */}
   <div className="flex flex-col gap-3 mt-6">
-    {[
-      { icon: Home, label: "Dashboard" },
-      { icon: CheckCircle2, label: "Tasks" },
-      { icon: FileText, label: "Notes" },
-      { icon: Mail, label: "Emails" },
-      { icon: Activity, label: "Activity Log" },
-      { icon: PieChart, label: "Analytics" },
-      { icon: Users, label: "Integrations" },
-      { icon: HelpCircle, label: "Help / How it works" },
-    ].map(({ icon: Icon, label }) => (
-      <div
-        key={label}
-        className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer"
-      >
-        <Icon size={18} />
-        {isSidebarOpen && (
-          <span className="text-sm text-gray-300">{label}</span>
-        )}
-      </div>
-    ))}
-  </div>
+  {navItems.map(({ icon: Icon, label, href }) => (
+    <Link
+      key={label}
+      href={href}
+      className="flex items-center gap-3 px-3 py-2 rounded-xl 
+                 hover:bg-white/5 cursor-pointer transition"
+    >
+      <Icon size={18} />
+      {isSidebarOpen && (
+        <span className="text-sm text-gray-300">{label}</span>
+      )}
+    </Link>
+  ))}
+</div>
 
   {/* Bottom */}
   <div className="mt-auto flex flex-col gap-4">
