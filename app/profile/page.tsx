@@ -5,22 +5,34 @@ import { Sidebar } from '@/components/Sidebar';
 import { RightPanel } from '@/components/RightPanel';
 import { 
   Mic, Mail, Shield, LogOut, 
-  CheckCircle2, FileText, 
-  Zap, Bot, Search, MessageSquare, Globe, Fingerprint, Activity
+  Zap, Bot, Search, MessageSquare, 
+  Globe, Fingerprint, Activity
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { CustomToggle } from '@/components/ui/CustomToggle';
 
 export default function ProfilePage() {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
-    const [mounted, setMounted] = useState(false);
-    const [activeLang, setActiveLang] = useState('EN');
-    const [time, setTime] = useState(new Date());
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [activeLang, setActiveLang] = useState('EN');
+  const [time, setTime] = useState(new Date());
+
+  // --- COMPONENT STATES ---
+  const [vocalFeedback, setVocalFeedback] = useState(true);
+  const [neuralLink, setNeuralLink] = useState(true);
+  const [agents, setAgents] = useState({
+    email: true,
+    summary: true,
+    research: false,
+    response: true
+  });
 
   useEffect(() => {
     setMounted(true);
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
   if (!mounted) return <div className="bg-[#15151b] h-screen w-full" />;
@@ -34,7 +46,7 @@ export default function ProfilePage() {
 
       <main className="flex-1 bg-[#1c1c24] rounded-l-[3.5rem] overflow-y-auto overflow-x-hidden p-12 custom-scrollbar relative">
         
-        {/* Background Decorative Element */}
+        {/* Decorative Background */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#FC90AF]/5 blur-[120px] rounded-full -mr-64 -mt-64 pointer-events-none" />
 
         {/* HEADER SECTION */}
@@ -46,22 +58,25 @@ export default function ProfilePage() {
             </div>
             <h1 className="text-5xl font-black tracking-tighter italic uppercase text-white">Console<span className="text-[#FC90AF]">.</span>Profile</h1>
           </div>
-          <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl backdrop-blur-md">
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1 text-right">System Health</p>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                <span className="text-xs font-bold text-white uppercase tracking-tighter">Neural Link 100%</span>
-              </div>
+          
+          <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl backdrop-blur-md flex items-center gap-6">
+            <div>
+               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1 text-right">System Health</p>
+               <div className="flex items-center gap-1.5">
+                  <div className={`w-1.5 h-1.5 rounded-full ${neuralLink ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-red-500 shadow-[0_0_8px_#ef4444]'}`} />
+                  <span className="text-xs font-bold text-white uppercase tracking-tighter">
+                    Neural Link {neuralLink ? '100%' : 'OFF'}
+                  </span>
+               </div>
             </div>
+            <CustomToggle checked={neuralLink} onChange={setNeuralLink} />
           </div>
         </header>
 
         <div className="grid grid-cols-12 gap-6 relative z-10">
           
-          {/* COLUMN 1: IDENTITY & STATS */}
+          {/* COLUMN 1: IDENTITY */}
           <section className="col-span-12 lg:col-span-4 space-y-6">
-            {/* Main User Card */}
             <div className="bg-gradient-to-b from-white/[0.08] to-transparent border border-white/10 p-10 rounded-[3rem] text-center shadow-2xl">
               <div className="relative w-32 h-32 mx-auto mb-6">
                 <div className="absolute inset-0 rounded-full bg-[#FC90AF] blur-2xl opacity-20 animate-pulse" />
@@ -85,7 +100,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Micro Stats Grid */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/[0.03] p-6 rounded-[2rem] border border-white/5">
                 <Activity className="text-[#FC90AF] mb-3" size={18} />
@@ -100,38 +114,38 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          {/* COLUMN 2 & 3: SETTINGS BENTO */}
+          {/* COLUMN 2 & 3: BENTO GRID */}
           <section className="col-span-12 lg:col-span-8 space-y-6">
             
-            {/* Agent Control Board (Compact Grid) */}
+            {/* Agent Deployment */}
             <div className="bg-white/[0.03] border border-white/10 rounded-[3rem] p-8">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <Bot className="text-[#FC90AF]" size={18} />
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">Agent Deployment</h3>
-                </div>
-                <span className="text-[9px] font-black text-[#FC90AF] bg-[#FC90AF]/10 px-3 py-1 rounded-full uppercase">All Systems Nominal</span>
+              <div className="flex items-center gap-3 mb-8">
+                <Bot className="text-[#FC90AF]" size={18} />
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">Agent Deployment</h3>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { name: "Email Agent", icon: Mail, color: "text-blue-400" },
-                  { name: "Summary Agent", icon: Zap, color: "text-yellow-400" },
-                  { name: "Research Agent", icon: Search, color: "text-purple-400" },
-                  { name: "Response Agent", icon: MessageSquare, color: "text-[#FC90AF]" }
+                  { id: 'email', name: "Email Agent", icon: Mail, color: "text-blue-400" },
+                  { id: 'summary', name: "Summary Agent", icon: Zap, color: "text-yellow-400" },
+                  { id: 'research', name: "Research Agent", icon: Search, color: "text-purple-400" },
+                  { id: 'response', name: "Response Agent", icon: MessageSquare, color: "text-[#FC90AF]" }
                 ].map((agent) => (
-                  <div key={agent.name} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all">
+                  <div key={agent.id} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all">
                     <div className="flex items-center gap-3">
                       <agent.icon className={agent.color} size={16} />
                       <span className="text-sm font-bold">{agent.name}</span>
                     </div>
-                    <Switch defaultChecked className="scale-75 data-[state=checked]:bg-[#FC90AF]" />
+                    <CustomToggle 
+                      checked={agents[agent.id as keyof typeof agents]} 
+                      onChange={(val) => setAgents(prev => ({...prev, [agent.id]: val}))}
+                    />
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Language & Linguistic Core */}
+            {/* Language & Voice Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white/[0.03] border border-white/10 rounded-[3rem] p-8 flex flex-col justify-between">
                 <div>
@@ -155,11 +169,10 @@ export default function ProfilePage() {
                 </div>
                 <div className="mt-8 flex items-center justify-between">
                   <span className="text-xs font-bold text-gray-400">Vocal Feedback</span>
-                  <Switch defaultChecked className="data-[state=checked]:bg-[#FC90AF]" />
+                  <CustomToggle checked={vocalFeedback} onChange={setVocalFeedback} />
                 </div>
               </div>
 
-              {/* Voice Core Card */}
               <div className="bg-white/[0.03] border border-white/10 rounded-[3rem] p-8">
                 <div className="flex items-center gap-3 mb-6">
                   <Mic className="text-[#FC90AF]" size={18} />
@@ -176,7 +189,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Critical Actions Row */}
+            {/* CRITICAL ACTIONS (Workspace Link + Purge) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2 bg-blue-500/5 border border-blue-500/10 rounded-[2.5rem] p-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -188,7 +201,7 @@ export default function ProfilePage() {
                 </div>
                 <Button variant="ghost" className="text-red-500 hover:bg-red-500/10 text-[10px] font-black uppercase">Revoke</Button>
               </div>
-              <Button className="h-full bg-red-500/10 text-red-500 border border-red-500/10 hover:bg-red-500 hover:text-white rounded-[2.5rem] font-black uppercase tracking-widest text-[10px]">
+              <Button className="h-full bg-red-500/10 text-red-500 border border-red-500/10 hover:bg-red-500 hover:text-white rounded-[2.5rem] font-black uppercase tracking-widest text-[10px] transition-all duration-300">
                 Purge Data
               </Button>
             </div>
@@ -197,13 +210,14 @@ export default function ProfilePage() {
         </div>
 
         {/* LOGOUT AREA */}
-        <div className="mt-12 flex justify-center">
+        <div className="mt-16 mb-8 flex justify-center relative z-10">
            <button className="flex items-center gap-2 text-gray-600 hover:text-white transition-colors group">
              <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Terminate Current Session</span>
            </button>
         </div>
       </main>
+
       <RightPanel 
         isRightPanelOpen={isRightPanelOpen} 
         setIsRightPanelOpen={setIsRightPanelOpen} 
