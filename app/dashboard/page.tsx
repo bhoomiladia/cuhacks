@@ -38,10 +38,19 @@ export default function DashboardPage() {
 >
   {/* Logo + Toggle */}
   <div className="flex items-center justify-between">
-    <div className="w-10 h-10 bg-gradient-to-br from-[#FC90AF] to-[#8F61DB] rounded-xl flex items-center justify-center font-bold text-lg">
-      A
-    </div>
-    {isSidebarOpen && (
+  {isSidebarOpen && (<button 
+      className="text-4xl font-bold tracking-tighter text-white uppercase imbue-bold hover:opacity-70 p-2 transition-opacity cursor-pointer"
+    >
+      KAIRO
+    </button>)
+}  
+  {!isSidebarOpen && (<button 
+      className="text-4xl font-bold tracking-tighter text-white uppercase imbue-bold hover:opacity-70 p-2 transition-opacity cursor-pointer"
+    >
+      K
+    </button>)
+}  
+  {isSidebarOpen && (
       <ChevronLeft
         size={18}
         className="text-gray-400 cursor-pointer"

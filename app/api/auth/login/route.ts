@@ -20,6 +20,20 @@ export async function POST(req: Request) {
     const user = await User.findOne({ email });
     if (!user) {
       return NextResponse.json(
+        { message: 'User account does not exist' },
+        { status: 401 }
+      );
+    }
+
+    if (!user.isVerified) {
+      return NextResponse.json(
+        { message: 'User account is not verified' },
+        { status: 403 }
+      );
+    }
+
+    if (!user.password) {
+      return NextResponse.json(
         { message: 'Invalid credentials' },
         { status: 401 }
       );
@@ -30,13 +44,6 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { message: 'Invalid credentials' },
         { status: 401 }
-      );
-    }
-
-    if (!user.isVerified) {
-      return NextResponse.json(
-        { message: 'Please verify your email address' },
-        { status: 403 }
       );
     }
 
