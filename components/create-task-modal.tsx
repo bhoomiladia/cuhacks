@@ -257,14 +257,14 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-transparent p-4">
       <div className="w-full max-w-md rounded-lg bg-background shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="text-lg font-semibold">Create New Task</h2>
           <button
             onClick={onClose}
-            className="rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="rounded-full p-1 text-white hover:bg-accent hover:text-foreground"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -275,7 +275,7 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
         <form onSubmit={handleSubmit} className="max-h-[70vh] overflow-y-auto p-6">
           <div className="space-y-6">
             {/* Title Field */}
-            <div className="space-y-2">
+            <div className="space-y-2 text-white">
               <Label htmlFor="title">Task Title</Label>
               <div className="relative">
                 <Input
@@ -348,43 +348,40 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <div className="p-2">
-                    <Calendar
-                      mode="single"
-                      selected={dueDate || undefined}
-                      onSelect={(date: Date | undefined) => setDueDate(date || null)}
-                      initialFocus
-                      className="rounded-md border bg-background"
-                      classNames={{
-                        months: "p-2",
-                        month: "space-y-3",
-                        caption: "flex justify-center pt-1 relative items-center mb-2",
-                        caption_label: "text-sm font-medium",
-                        nav: "space-x-1 flex items-center",
-                        nav_button: "h-7 w-7 p-0 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground flex items-center justify-center",
-                        nav_button_previous: "absolute left-1",
-                        nav_button_next: "absolute right-1",
-                        table: "w-full border-collapse space-y-1",
-                        head_row: "flex justify-between",
-                        head_cell: "text-muted-foreground rounded-md w-8 font-normal text-xs",
-                        row: "flex w-full mt-1",
-                        cell: "h-8 w-8 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                        day: "h-8 w-8 p-0 font-normal rounded-md hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                        day_selected: "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary focus:text-primary-foreground",
-                        day_today: "bg-accent text-accent-foreground border border-border",
-                        day_outside: "text-muted-foreground opacity-50",
-                        day_disabled: "text-muted-foreground opacity-50",
-                        day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-                        day_hidden: "invisible"
-                      }}
-                      components={{
-                        Chevron: ({ ...props }) => {
-                          if (props.orientation === 'left') {
-                            return <ChevronLeft className="h-4 w-4" {...props} />;
-                          }
-                          return <ChevronRight className="h-4 w-4" {...props} />;
-                        }
-                      }}
-                                          />
+                  <Calendar
+  mode="single"
+  selected={dueDate || undefined}
+  onSelect={(date: Date | undefined) => setDueDate(date || null)}
+  initialFocus
+  className="rounded-md border bg-background"
+  classNames={{
+    months: "p-2",
+    month: "space-y-3",
+    month_caption: "flex justify-center pt-1 relative items-center mb-2", // Changed from 'caption'
+    caption_label: "text-sm font-medium",
+    nav: "space-x-1 flex items-center",
+    button_previous: "absolute left-1 h-7 w-7 p-0 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground flex items-center justify-center", // Combined nav_button & nav_button_previous
+    button_next: "absolute right-1 h-7 w-7 p-0 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground flex items-center justify-center", // Combined nav_button & nav_button_next
+    month_grid: "w-full border-collapse space-y-1", // Changed from 'table'
+    weekdays: "flex justify-between", // Changed from 'head_row'
+    weekday: "text-muted-foreground rounded-md w-8 font-normal text-xs", // Changed from 'head_cell'
+    week: "flex w-full mt-1", // Changed from 'row'
+    day: "h-8 w-8 p-0 font-normal rounded-md hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center justify-center", 
+    selected: "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary focus:text-primary-foreground", // Changed from 'day_selected'
+    today: "bg-accent text-accent-foreground border border-border", // Changed from 'day_today'
+    outside: "text-muted-foreground opacity-50", // Changed from 'day_outside'
+    disabled: "text-muted-foreground opacity-50", // Changed from 'day_disabled'
+    hidden: "invisible" // Changed from 'day_hidden'
+  }}
+  components={{
+    Chevron: ({ ...props }) => {
+      if (props.orientation === 'left') {
+        return <ChevronLeft className="h-4 w-4" />;
+      }
+      return <ChevronRight className="h-4 w-4" />;
+    }
+  }}
+/>
                   </div>
                 </PopoverContent>
               </Popover>
