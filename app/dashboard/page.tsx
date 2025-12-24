@@ -218,9 +218,7 @@ export default function DashboardPage() {
                                     <stop offset="100%" style={{stopColor:'#FC90AF', stopOpacity:0}} />
                                 </linearGradient>
                             </defs>
-                        </svg>
-
-                        
+                        </svg>    
                    </div>
                 </motion.div>
             {/* Feature 8: Daily Overview (Bento Row) */}
@@ -238,7 +236,6 @@ export default function DashboardPage() {
                   <h4 className="text-3xl font-black text-[#a855f7]">24h</h4>
                </div>
             </div>
-
           </div>
         </main>
       </div>
