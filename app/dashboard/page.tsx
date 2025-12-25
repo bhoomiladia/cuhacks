@@ -1,95 +1,25 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Home, PieChart, Users, Settings, LogOut,
   Mail, ChevronLeft, ChevronRight, 
   Mic, Play, CheckCircle2, CheckSquare,
-  Plus, Send, HelpCircle, FileText, Activity, Loader2
+ Plus, Send, HelpCircle, FileText, Activity
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
-import { SpeechToText, createTaskFromTranscript } from "@/lib/speechToText"
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
 
 export default function DashboardPage() {
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
   const [time, setTime] = useState(new Date())
-  const [isListening, setIsListening] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [transcript, setTranscript] = useState('')
-  const speechToTextRef = useRef<SpeechToText | null>(null)
-
-  // Initialize speech to text
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      speechToTextRef.current = new SpeechToText({
-        onResult: (text) => {
-          setTranscript(prev => prev + ' ' + text)
-        },
-        onError: (error) => {
-          console.error('Speech recognition error:', error)
-          setIsListening(false)
-          toast.error('Speech recognition error')
-        },
-        onStart: () => {
-          setIsListening(true)
-          setTranscript('')
-          toast('Listening...', { duration: 2000 })
-        },
-        onEnd: () => {
-          setIsListening(false)
-          if (transcript.trim()) {
-            handleSubmitTranscript(transcript.trim())
-          }
-        }
-      })
-    }
-
-    // Cleanup
-    return () => {
-      if (speechToTextRef.current) {
-        speechToTextRef.current.stop()
-      }
-    }
-  }, [])
 
   // Update time every second
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 100)
     return () => clearInterval(timer)
   }, [])
-
-  const toggleListening = () => {
-    if (!speechToTextRef.current) return
-    
-    if (isListening) {
-      speechToTextRef.current.stop()
-    } else {
-      speechToTextRef.current.start()
-    }
-  }
-
-  const router = useRouter()
-
-  const handleSubmitTranscript = (text: string) => {
-    if (!text.trim()) return
-    
-    setIsProcessing(true)
-    try {
-      createTaskFromTranscript(text)
-      toast.success('Task created successfully')
-      setTranscript('')
-      router.push('/tasks')
-    } catch (error) {
-      console.error('Error creating task:', error)
-      toast.error('Failed to create task')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
 
   const formattedDate = time.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' })
   const formattedTime = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -216,38 +146,9 @@ export default function DashboardPage() {
                        <input 
                          placeholder="Create a task to email the team..." 
                          className="bg-transparent border-none outline-none flex-1 px-4 py-2 placeholder:text-white/60 text-white font-medium"
-                         value={transcript}
-                         onChange={(e) => setTranscript(e.target.value)}
-                         onKeyDown={(e) => {
-                           if (e.key === 'Enter' && transcript.trim()) {
-                             handleSubmitTranscript(transcript)
-                           }
-                         }}
                        />
-                       <button 
-                         type="button"
-                         onClick={toggleListening}
-                         disabled={isProcessing}
-                         className={`p-3 rounded-xl transition-all mr-1 ${
-                           isListening 
-                             ? 'bg-red-500 hover:bg-red-600' 
-                             : 'bg-white/20 hover:bg-white/40'
-                         }`}
-                       >
-                         {isProcessing ? (
-                           <Loader2 className="h-4 w-4 animate-spin" />
-                         ) : (
-                           <Mic size={18} className={isListening ? 'text-white' : ''} />
-                         )}
-                       </button>
-                       <button 
-                         type="button"
-                         onClick={() => handleSubmitTranscript(transcript)}
-                         disabled={!transcript.trim() || isProcessing}
-                         className="p-3 bg-white rounded-xl text-[#f985a6] hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                       >
-                         <Send size={18} />
-                       </button>
+                       <button className="p-3 bg-white/20 hover:bg-white/40 rounded-xl transition-all mr-1"><Mic size={18} /></button>
+                       <button className="p-3 bg-white rounded-xl text-[#f985a6] hover:scale-105 transition-all"><Send size={18} /></button>
                     </div>
                   </div>
                </div>
