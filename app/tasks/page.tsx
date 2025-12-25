@@ -170,10 +170,10 @@ export default function TasksPage() {
     {[
       { icon: Home, label: "Dashboard" },
       { icon: CheckCircle2, label: "Tasks" },
-      { icon: FileText, label: "Notes" },
+      // { icon: FileText, label: "Notes" },
       { icon: Mail, label: "Emails" },
-      { icon: Activity, label: "Activity Log" },
-      { icon: PieChart, label: "Analytics" },
+      // { icon: Activity, label: "Activity Log" },
+      // { icon: PieChart, label: "Analytics" },
       { icon: Users, label: "Integrations" },
       { icon: HelpCircle, label: "Help / How it works" },
     ].map(({ icon: Icon, label }) => (

@@ -29,10 +29,10 @@ export function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) {
   const navItems = [
     { icon: Home, label: "Dashboard", href: "/dashboard" },
     { icon: CheckCircle2, label: "Tasks", href: "/tasks" },
-    { icon: FileText, label: "Notes", href: "/notes" },
+    // { icon: FileText, label: "Notes", href: "/notes" },
     { icon: Mail, label: "Emails", href: "/emails" },
-    { icon: Activity, label: "Activity Log", href: "/activity" },
-    { icon: PieChart, label: "Analytics", href: "/analytics" },
+    // { icon: Activity, label: "Activity Log", href: "/activity" },
+    // { icon: PieChart, label: "Analytics", href: "/analytics" },
     { icon: Users, label: "Integrations", href: "/integrations" },
     { icon: HelpCircle, label: "Help / How it works", href: "/help" },
   ];
