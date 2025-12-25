@@ -16,7 +16,7 @@ import { TabsList } from "@/components/ui/glass/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { CreateTaskModal } from "@/components/create-task-modal"
-// import dynamic from "next/dynamic"
+import Link from "next/link"
 import { format } from 'date-fns'
 import  GlassSurface  from "@/components/GlassSurface"
 
@@ -446,6 +446,8 @@ export default function TasksPage() {
 
 function TaskCard({ task }: { task: Task }) {
   return (
+    <Link href={`/tasks/${task.id}`}> {/* This is the key change */}
+
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -487,5 +489,6 @@ function TaskCard({ task }: { task: Task }) {
         </DropdownMenu>
       </div>
     </motion.div>
+    </Link>
   )
 }

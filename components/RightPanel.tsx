@@ -15,15 +15,11 @@ import { Avatar, AvatarImage } from '@/components/ui/avatar';
 interface RightPanelProps {
   isRightPanelOpen: boolean;
   setIsRightPanelOpen: (value: boolean) => void;
-  formattedTime: string;
-  formattedDate: string;
 }
 
 export function RightPanel({ 
   isRightPanelOpen, 
   setIsRightPanelOpen, 
-  formattedTime, 
-  formattedDate 
 }: RightPanelProps) {
   return (
     <motion.aside 
@@ -43,9 +39,7 @@ export function RightPanel({
         
         {/* Time & Date Header */}
         <div className={`mb-12 transition-all duration-500 flex flex-col ${isRightPanelOpen ? 'items-start' : 'items-center pt-6'}`}>
-          <h2 className={`font-black tracking-tighter text-[#FC90AF] leading-none transition-all duration-500 ${isRightPanelOpen ? 'text-5xl' : 'text-xl rotate-90 my-12'}`}>
-             {formattedTime.split(' ')[0]}
-          </h2>
+
           <AnimatePresence>
             {isRightPanelOpen && (
               <motion.div 
@@ -54,7 +48,6 @@ export function RightPanel({
                 exit={{ opacity: 0 }} 
                 className="mt-4"
               >
-                <p className="text-gray-300 text-sm font-bold uppercase tracking-[0.3em]">{formattedDate}</p>
                 <div className="flex items-center gap-2 mt-2 text-[10px] text-green-500">
                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                    SERVER STATUS: OPTIMAL
