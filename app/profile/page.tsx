@@ -28,12 +28,29 @@ export default function ProfilePage() {
     research: false,
     response: true
   });
+  const [profile, setProfile] = useState<{ name: string; email: string } | null>(null);
 
   useEffect(() => {
     setMounted(true);
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+  async function fetchProfile() {
+    try {
+      const res = await fetch('/api/profile');
+      if (!res.ok) return;
+      const data = await res.json();
+      setProfile(data);
+    } catch (err) {
+      console.error('Failed to fetch profile');
+    }
+  }
+
+  fetchProfile();
+}, []);
+
 
   if (!mounted) return <div className="bg-[#15151b] h-screen w-full" />;
 
@@ -85,13 +102,19 @@ export default function ProfilePage() {
                   <AvatarFallback>JT</AvatarFallback>
                 </Avatar>
               </div>
-              <h2 className="text-2xl font-black text-white tracking-tight">James Todd</h2>
+              <h2 className="text-2xl font-black text-white tracking-tight">
+  {profile?.name || '—'}
+</h2>
+
               <p className="text-gray-500 text-xs font-bold uppercase tracking-[0.1em] mt-1">Lead Architect</p>
               
               <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
                 <div className="flex justify-between items-center px-2">
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Email</span>
-                  <span className="text-xs font-medium text-white">james@kairo.io</span>
+                  <span className="text-xs font-medium text-white">
+  {profile?.email || '—'}
+</span>
+
                 </div>
                 <div className="flex justify-between items-center px-2">
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Uptime</span>
