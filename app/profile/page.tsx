@@ -221,8 +221,6 @@ export default function ProfilePage() {
       <RightPanel 
         isRightPanelOpen={isRightPanelOpen} 
         setIsRightPanelOpen={setIsRightPanelOpen} 
-        formattedTime={formattedTime} 
-        formattedDate={formattedDate} 
       />
     </div>
   );
