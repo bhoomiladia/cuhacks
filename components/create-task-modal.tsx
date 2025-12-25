@@ -77,6 +77,7 @@ interface CreateTaskModalProps {
     description: string;
     dueDate: Date | null;
     priority: 'low' | 'medium' | 'high';
+    file: File | null;
   }) => void;
 }
 
@@ -238,13 +239,18 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
       title: title.trim(),
       description: description.trim(),
       dueDate,
-      priority
+      priority,
+      file: selectedFile
     });
     // Reset form
     setTitle('');
     setDescription('');
     setDueDate(null);
     setPriority('medium');
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     onClose();
   };
 

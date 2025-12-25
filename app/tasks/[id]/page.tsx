@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useRouter } from 'next/navigation'
 import { 
   Sparkles, Mail, CheckCircle2, Clock, Calendar, 
   Paperclip, Send, Zap, FileText, Activity, 
   ChevronLeft, ChevronRight, Home, PieChart, 
-  Users, Settings, LogOut, HelpCircle, Bot, ShieldCheck
+  Users, Settings, LogOut, HelpCircle, Bot, ShieldCheck, Download
 } from "lucide-react"
 import { Sidebar } from '@/components/Sidebar'
 import { Button } from "@/components/ui/button"
@@ -15,13 +15,62 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { RightPanel } from '@/components/RightPanel'
+import { format } from 'date-fns'
+
+interface Task {
+  _id: string;
+  title: string;
+  description: string;
+  status: 'pending' | 'in-progress' | 'completed';
+  priority: 'low' | 'medium' | 'high';
+  dueDate?: string;
+  assignedAgent: string;
+  tags: string[];
+  fileUrl?: string;
+  fileName?: string;
+  createdAt: string;
+}
 
 export default function TaskControlPage() {
   const params = useParams()
   const router = useRouter()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [chatInput, setChatInput] = useState("")
-const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
+  
+  const [task, setTask] = useState<Task | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchTask = async () => {
+      try {
+        const response = await fetch(`/api/tasks/${params.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          setTask(data)
+        } else {
+          console.error('Failed to fetch task')
+        }
+      } catch (error) {
+        console.error('Error fetching task:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    if (params.id) {
+      fetchTask()
+    }
+  }, [params.id])
+
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center bg-[#15151b] text-white">Loading task...</div>
+  }
+
+  if (!task) {
+    return <div className="flex h-screen items-center justify-center bg-[#15151b] text-white">Task not found</div>
+  }
+
   return (
     <div className="flex h-screen bg-[#15151b] overflow-hidden text-white font-sans selection:bg-[#FC90AF]/30">
       
@@ -38,15 +87,33 @@ const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
           <header className="flex justify-between items-start mb-10">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <Badge className="bg-white/5 text-gray-500 border-white/10 font-mono tracking-tighter">TASK-{params.id}</Badge>
-                <Badge className="bg-yellow-500/10 text-yellow-500 border-none px-3 py-1 text-[10px] font-black uppercase tracking-widest">In Progress</Badge>
+                <Badge className="bg-white/5 text-gray-500 border-white/10 font-mono tracking-tighter">TASK-{task._id.slice(-6).toUpperCase()}</Badge>
+                <Badge className={`
+                  border-none px-3 py-1 text-[10px] font-black uppercase tracking-widest
+                  ${task.status === 'completed' ? 'bg-green-500/10 text-green-500' :
+                    task.status === 'in-progress' ? 'bg-yellow-500/10 text-yellow-500' :
+                    'bg-gray-500/10 text-gray-400'}
+                `}>
+                  {task.status}
+                </Badge>
+                <Badge className={`
+                  border-none px-3 py-1 text-[10px] font-black uppercase tracking-widest
+                  ${task.priority === 'high' ? 'bg-red-500/10 text-red-400' :
+                    task.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-400' :
+                    'bg-blue-500/10 text-blue-400'}
+                `}>
+                  {task.priority} Priority
+                </Badge>
               </div>
-              <h1 className="text-5xl font-black italic uppercase tracking-tighter">
-               TASK <span className="text-[#FC90AF]">CONTROL</span>
+              <h1 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-tight">
+               TASK CONTROL
               </h1>
-              <div className="flex gap-4 mt-2 text-xs text-gray-500 font-bold uppercase tracking-widest">
-                 <span className="flex items-center gap-1.5"><Calendar size={14} className="text-[#FC90AF]"/> Due Today</span>
-                 <span className="flex items-center gap-1.5"><Clock size={14}/> Active 22m</span>
+              <div className="flex gap-4 mt-4 text-xs text-gray-500 font-bold uppercase tracking-widest">
+                 <span className="flex items-center gap-1.5">
+                   <Calendar size={14} className="text-[#FC90AF]"/> 
+                   Due {task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No Date'}
+                 </span>
+                 <span className="flex items-center gap-1.5"><Clock size={14}/> Created {format(new Date(task.createdAt), 'MMM d')}</span>
               </div>
             </div>
             <Button onClick={() => router.push('/tasks')} variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl h-12 text-[10px] font-black uppercase tracking-widest">
@@ -63,16 +130,22 @@ const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">User Context</h3>
               </div>
               <div className="relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-md p-8">
+                <h4 className="text-2xl font-bold text-white mb-4">{task.title}</h4>
                 <p className="text-xl text-gray-200 leading-relaxed italic mb-6">
-                  "I need to prepare the quarterly business review slides. Focus on the Q4 revenue growth and ensure the agent pulls data from the analytics dashboard."
+                  "{task.description || "No description provided."}"
                 </p>
-                <div className="flex gap-3">
-                  {['metrics_q4.csv', 'branding_v3.pptx'].map(file => (
-                    <div key={file} className="flex items-center gap-2 bg-black/40 border border-white/5 px-4 py-2 rounded-xl text-[10px] font-bold text-gray-400 hover:border-[#FC90AF]/40 cursor-pointer">
-                      <Paperclip size={12} className="text-[#FC90AF]"/> {file}
-                    </div>
-                  ))}
-                </div>
+                {task.fileUrl && (
+                  <div className="flex gap-3">
+                    <a 
+                      href={task.fileUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-black/40 border border-white/5 px-4 py-2 rounded-xl text-[10px] font-bold text-gray-400 hover:border-[#FC90AF]/40 cursor-pointer transition-all"
+                    >
+                      <Paperclip size={12} className="text-[#FC90AF]"/> {task.fileName || 'Attachment'}
+                    </a>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -88,7 +161,7 @@ const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
                     <ShieldCheck size={14}/> Task Understanding
                   </h4>
                   <p className="bg-black/20 p-5 rounded-2xl border border-white/5 text-gray-400 text-sm font-mono leading-relaxed">
-                    Analyzing input for: Quarter Review Presentation. Extracting metrics from CSV. Generating 12 slides focused on Q4 growth.
+                    Analyzing input for: {task.title}. Extracting key requirements. Generating execution plan based on {task.priority} priority.
                   </p>
                 </div>
 
@@ -114,7 +187,7 @@ const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
                   <div className="flex gap-3 max-w-[80%]">
                     <div className="w-8 h-8 rounded-full bg-[#FC90AF]/20 flex items-center justify-center text-[#FC90AF]"><Bot size={14}/></div>
                     <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none text-xs text-gray-300">
-                      I've analyzed the revenue files. Would you like me to highlight the 15% increase in the EMEA region specifically?
+                      I'm ready to assist with "{task.title}". What specific details would you like me to focus on?
                     </div>
                   </div>
                 </div>
