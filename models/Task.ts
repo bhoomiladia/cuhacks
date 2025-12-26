@@ -61,9 +61,6 @@ const TaskSchema = new mongoose.Schema({
   finalResult: {
     type: String,
   },
-  assistant_response: {
-    type: String,
-  },
   executionStartedAt: {
     type: Date,
   },

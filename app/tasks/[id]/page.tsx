@@ -34,7 +34,6 @@ interface Task {
   executionPlan?: string;
   intermediateSteps?: string[];
   finalResult?: string;
-  assistant_response?: string;
   emailDraft?: {
     subject: string;
     body: string;
@@ -130,43 +129,45 @@ export default function TaskControlPage() {
     const desc = (task.description || '').toLowerCase()
     const fullText = `${title} ${desc}`
     
-    // Agentic AI Example Override
-    if (fullText.includes('agentic ai')) {
-        // Only return definition if it's a "what is" or vague question
-        if (fullText.includes('what') || fullText.includes('define') || fullText.includes('explain') || fullText.length < 50) {
-            return `Agentic AI refers to systems designed to act autonomously toward goals rather than simply responding to prompts. These systems can plan steps, make decisions, use tools, and adapt their behavior based on feedback. Instead of waiting for continuous user input, an agentic AI can break down a task, execute subtasks, and adjust its approach as conditions change. This makes it useful for workflows like research, scheduling, automation, and multi-step problem solving.`
-        }
-        
-        // If it's a specific question about companies/usage, answer directly
-        if (fullText.includes('companies') || fullText.includes('use') || fullText.includes('industry')) {
-             return "Yes, companies like OpenAI, Anthropic, and Microsoft are actively deploying agentic AI. Examples include coding assistants (Devin), autonomous research agents, and customer support bots that can take actions like processing refunds or booking appointments. The industry is shifting from static chatbots to goal-oriented agents."
-        }
-    }
+    if (title.includes('intern') || title.includes('frontend') || desc.includes('intern')) {
+      return `Here are companies currently hiring frontend interns:
 
-    // Interpreter Logic (Client-side mirror)
-    const isEmail = fullText.includes('email') || fullText.includes('send') || fullText.includes('draft') || fullText.includes('write')
+Google - Applications open for Summer 2025. Apply at careers.google.com. Compensation: $6,000-$8,000/month.
+
+Meta - Currently accepting applications. Portal: careers.meta.com. Compensation: $7,000-$9,000/month.
+
+Microsoft - Multiple locations available. Apply at careers.microsoft.com. Compensation: $6,500-$8,500/month.
+
+Amazon - Active recruitment for 2025. Portal: amazon.jobs. Compensation: $6,000-$8,000/month.
+
+To get a frontend internship, focus on building 3-5 portfolio projects with React, mastering JavaScript ES6+, and applying 6-9 months before your desired start date. Required skills include JavaScript, React, responsive design, Git, and RESTful APIs.`
+    }
     
-    if (isEmail) {
+    if (desc.includes('email') || title.includes('email') || desc.includes('send')) {
       const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/
       const emailMatch = fullText.match(emailRegex)
-      const subject = task.title.replace(/^(draft|send|compose|write|email)\s+/i, '').replace(/\s+(email|mail)$/i, '')
       
-      return `I have drafted an email regarding "${subject}"${emailMatch ? ` to ${emailMatch[0]}` : ''}. You can review and send it below.`
+      if (emailMatch) {
+        return `Email draft prepared for ${emailMatch[0]}:
+
+Subject: ${task.title.replace(/^(draft|send|compose|write|email)\s+/i, '').replace(/\s+(email|mail)$/i, '')}
+
+${task.description || task.title}`
+      }
+      
+      return `Email draft prepared:
+
+Subject: ${task.title.replace(/^(draft|send|compose|write|email)\s+/i, '').replace(/\s+(email|mail)$/i, '')}
+
+${task.description || 'Your message content here'}`
     }
     
-    if (fullText.includes('frontend') && (fullText.includes('intern') || fullText.includes('job'))) {
-       return `Companies hiring for frontend roles include Google (Summer 2025), Meta (Rolling), Microsoft, and Amazon.
-
-Success requires:
-1. **Strong Portfolio**: 3-5 projects using React.
-2. **Technical Skills**: JavaScript (ES6+), TypeScript, CSS/Tailwind.
-3. **Fundamentals**: Data structures, algorithms, and system design basics.
-
-Apply 6-9 months in advance for major tech companies.`
+    // For any other task, provide direct answer
+    if (task.description) {
+      return task.description
     }
     
-    // Default Direct Response
-    return `${task.title} refers to a specific objective or topic. Addressing this typically requires identifying key constraints, gathering necessary resources, and executing a structured plan.`;
+    return `Here's the information about "${task.title}".`
   }
   
   const triggerInitialExecution = async (taskId: string, taskData: Task, initialResponse: string) => {
@@ -535,12 +536,12 @@ Apply 6-9 months in advance for major tech companies.`
               </div>
             </section>
 
-            {/* 🤖 RESPONSE OUTPUT */}
+            {/* 🤖 AGENT INTELLIGENCE OUTPUT */}
             <section className="space-y-4">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-[#a855f7]" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Response</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Agent Intelligence</h3>
                 </div>
                 {task.executionStatus === 'failed' && (
                   <Button
@@ -553,7 +554,7 @@ Apply 6-9 months in advance for major tech companies.`
                 )}
               </div>
               <Card className="bg-[#1f1f2e] border-white/5 p-8 rounded-[2.5rem] border-l-4 border-l-[#a855f7] space-y-8">
-                {(executing || task.executionStatus === 'running') && !task.finalResult ? (
+                {executing || task.executionStatus === 'running' ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center space-y-4">
                       <motion.div
@@ -561,7 +562,7 @@ Apply 6-9 months in advance for major tech companies.`
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         className="w-12 h-12 border-4 border-[#a855f7]/20 border-t-[#a855f7] rounded-full mx-auto"
                       />
-                      <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Generating Response...</p>
+                      <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Agent Pipeline Running...</p>
                     </div>
                   </div>
                 ) : task.executionStatus === 'failed' ? (
@@ -570,14 +571,86 @@ Apply 6-9 months in advance for major tech companies.`
                   </div>
                 ) : (
                   <>
-                    {/* Final Output */}
-                    {(task.assistant_response || task.finalResult || (chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant' ? chatMessages[chatMessages.length - 1].content : null)) && (
+                    {/* Task Understanding (Interpreter) */}
+                    {(task.taskUnderstanding || (task as any).executionLogs?.some((l: any) => l.agent === 'Interpreter')) && (
                       <div>
                         <h4 className="text-[10px] font-black uppercase text-[#a855f7] mb-3 tracking-widest flex items-center gap-2">
-                          <CheckCircle2 size={14}/> Result
+                          <ShieldCheck size={14}/> Task Understanding (Interpreter)
+                        </h4>
+                        <p className="bg-black/20 p-5 rounded-2xl border border-white/5 text-gray-400 text-sm font-mono leading-relaxed">
+                          {task.taskUnderstanding || (task as any).executionLogs?.find((l: any) => l.agent === 'Interpreter')?.output || 'Analyzing task... Extracting key requirements and generating execution plan.'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Research Output */}
+                    {(task.executionPlan || (task as any).executionLogs?.some((l: any) => l.agent === 'Research')) && (
+                      <div>
+                        <h4 className="text-[10px] font-black uppercase text-[#a855f7] mb-3 tracking-widest flex items-center gap-2">
+                          <Activity size={14}/> Research Output
                         </h4>
                         <p className="bg-black/20 p-5 rounded-2xl border border-white/5 text-gray-400 text-sm font-mono leading-relaxed whitespace-pre-wrap">
-                          {task.assistant_response || task.finalResult || (chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant' ? chatMessages[chatMessages.length - 1].content : '')}
+                          {task.executionPlan || (task as any).executionLogs?.find((l: any) => l.agent === 'Research')?.output || ''}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Execution Logs Timeline */}
+                    {(task as any).executionLogs && (task as any).executionLogs.length > 0 && (
+                      <div>
+                        <h4 className="text-[10px] font-black uppercase text-[#a855f7] mb-3 tracking-widest flex items-center gap-2">
+                          <Zap size={14}/> Execution Timeline
+                        </h4>
+                        <div className="space-y-2">
+                          {(task as any).executionLogs.slice(-10).map((log: any, i: number) => (
+                            <div key={i} className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                              <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                                log.status === 'completed' ? 'bg-green-400' :
+                                log.status === 'running' ? 'bg-yellow-400 animate-pulse' :
+                                'bg-red-400'
+                              }`} />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-[10px] font-black uppercase text-[#a855f7]">{log.agent}</span>
+                                  <span className="text-[9px] text-gray-600">{log.step}</span>
+                                </div>
+                                {log.output && (
+                                  <p className="text-xs text-gray-400">{log.output.substring(0, 200)}{log.output.length > 200 ? '...' : ''}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step-by-step Execution (Executor) */}
+                    {task.intermediateSteps && task.intermediateSteps.length > 0 && (
+                      <div>
+                        <h4 className="text-[10px] font-black uppercase text-[#a855f7] mb-3 tracking-widest flex items-center gap-2">
+                          <Zap size={14}/> Step-by-step Execution (Executor)
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {task.intermediateSteps.map((step, i) => (
+                            <div key={i} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                              <div className="h-8 w-8 rounded-lg bg-[#a855f7]/20 text-[#a855f7] flex items-center justify-center text-xs font-black">
+                                {String(i + 1).padStart(2, '0')}
+                              </div>
+                              <span className="text-[10px] font-black uppercase tracking-tighter">{step}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Final Output */}
+                    {task.finalResult && (
+                      <div>
+                        <h4 className="text-[10px] font-black uppercase text-[#a855f7] mb-3 tracking-widest flex items-center gap-2">
+                          <CheckCircle2 size={14}/> Final Output
+                        </h4>
+                        <p className="bg-black/20 p-5 rounded-2xl border border-white/5 text-gray-400 text-sm font-mono leading-relaxed whitespace-pre-wrap">
+                          {task.finalResult}
                         </p>
                       </div>
                     )}

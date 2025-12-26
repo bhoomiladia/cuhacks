@@ -99,6 +99,10 @@ export async function executeLangflowChat(input: LangflowChatInput): Promise<Lan
 
 function parseLangflowChatResponse(response: any): LangflowChatResponse {
   try {
+    const validTexts: string[] = [];
+    let emailDraft: { subject: string; body: string; recipient: string } | undefined;
+    let should_send_email = false;
+
     if (response.outputs) {
       const outputKeys = Object.keys(response.outputs);
       
@@ -109,31 +113,46 @@ function parseLangflowChatResponse(response: any): LangflowChatResponse {
             if (item?.results?.message?.text) {
               const text = item.results.message.text;
               
-              // Try to extract structured data
-              const result: LangflowChatResponse = {
-                response: text,
-              };
+              // Filter out internal/analytical outputs
+              if (
+                text.includes('Task Understanding:') ||
+                text.includes('Execution Plan:') ||
+                text.includes('is a valid query') ||
+                text.includes('requires research') ||
+                text.length < 5
+              ) {
+                continue;
+              }
+
+              validTexts.push(text);
               
               // Check for email intent
               if (text.toLowerCase().includes('email') || text.toLowerCase().includes('send to')) {
                 const emailMatch = text.match(/(?:to|send to|email to)\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
                 if (emailMatch) {
-                  result.email_draft = {
+                  emailDraft = {
                     subject: extractEmailSubject(text),
                     body: extractEmailBody(text),
                     recipient: emailMatch[1],
                   };
-                  result.should_send_email = true;
+                  should_send_email = true;
                 }
               }
-              
-              return result;
             }
           }
         }
       }
     }
     
+    // Return the final valid text response
+    if (validTexts.length > 0) {
+      return {
+        response: validTexts[validTexts.length - 1],
+        email_draft: emailDraft,
+        should_send_email: should_send_email,
+      };
+    }
+
     return {
       response: JSON.stringify(response, null, 2),
     };

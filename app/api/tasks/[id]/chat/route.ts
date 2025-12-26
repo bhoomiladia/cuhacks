@@ -49,10 +49,11 @@ export async function POST(
     // Generate response using Langflow or fallback
     try {
       // Create a follow-up task input for Langflow
+      // STRICT INPUT SANITIZATION: Send only the user message
       const taskInput = {
         task_id: task._id.toString(),
-        title: task.title,
-        description: `${task.description || ''}\n\nUser follow-up question: ${message}`,
+        title: "User Request",
+        description: message, // ONLY the latest raw user input
         priority: task.priority,
         uploaded_documents: task.fileUrl ? [task.fileUrl] : [],
       };

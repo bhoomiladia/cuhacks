@@ -259,6 +259,8 @@ export function parseLangflowResponse(response: LangflowResponse): {
   } = {};
 
   try {
+    const validTexts: string[] = [];
+
     // Parse Langflow response structure
     if (response.outputs) {
       const outputKeys = Object.keys(response.outputs);
@@ -270,39 +272,33 @@ export function parseLangflowResponse(response: LangflowResponse): {
             if (item?.results?.message?.text) {
               const text = item.results.message.text;
               
-              // New Logic: The text IS the final result. 
-              // We no longer look for "Task Understanding:" headers as they are banned.
-              // If the text contains them (from legacy or real agent), we might still parse them,
-              // but for our new mock, it will just be the text.
-              
-              if (text.includes('Task Understanding:') || text.includes('Understanding:')) {
-                 // Legacy/Real agent support
-                result.taskUnderstanding = text;
-              } else if (text.includes('Execution Plan:') || text.includes('Plan:')) {
-                 // Legacy/Real agent support
-                result.executionPlan = text;
-              } else if (text.includes('Final Result:') || text.includes('Result:')) {
-                 // Legacy/Real agent support
-                result.finalResult = text;
-              } else {
-                // Default: treat as final result
-                if (!result.finalResult) {
-                  result.finalResult = text;
-                }
+              // Filter out internal/analytical outputs
+              if (
+                 text.includes('Task Understanding:') ||
+                 text.includes('Execution Plan:') ||
+                 text.includes('is a valid query') ||
+                 text.includes('requires research') ||
+                 text.length < 5
+              ) {
+                 continue;
               }
+              
+              validTexts.push(text);
             }
           }
         }
       }
     }
 
-    // If we have a final result but no intermediate steps, we do NOT fabricate them anymore.
-    // The user explicitly requested "Never dump... execution steps".
-    // So we leave intermediateSteps undefined.
+    // Use the last valid text as finalResult
+    if (validTexts.length > 0) {
+      result.finalResult = validTexts[validTexts.length - 1];
+    }
 
     // Fallback
-    if (!result.finalResult) {
-      result.finalResult = JSON.stringify(response, null, 2);
+    if (!result.finalResult && validTexts.length === 0) {
+      // If we filtered everything or found nothing, we might return nothing or raw
+      // result.finalResult = JSON.stringify(response, null, 2);
     }
 
     return result;
