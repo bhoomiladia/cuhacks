@@ -28,9 +28,12 @@ export async function PATCH(
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log(`Attempting to complete task ${params.id} for user ${user.userId}`);
+
     const task = await Task.findOne({ _id: params.id, userId: user.userId });
 
     if (!task) {
+      console.log(`Task ${params.id} not found for user ${user.userId}`);
       return NextResponse.json({ message: 'Task not found' }, { status: 404 });
     }
 

@@ -7,7 +7,7 @@ import {
   Sparkles, Mail, CheckCircle2, Clock, Calendar, 
   Paperclip, Send, Zap, FileText, Activity, 
   ChevronLeft, ChevronRight, Home, PieChart, 
-  Users, Settings, LogOut, HelpCircle, Bot, ShieldCheck, Download, User
+  Users, Settings, LogOut, HelpCircle, Bot, ShieldCheck, Download, User, Trash
 } from "lucide-react"
 import { Sidebar } from '@/components/Sidebar'
 import { Button } from "@/components/ui/button"
@@ -779,23 +779,67 @@ Apply 6-9 months in advance for major tech companies.`
                   <CheckCircle2 size={16}/> Email Sent
                 </Button>
               )}
+              {task.status === 'completed' ? (
+                <Button
+                  disabled
+                  className="h-16 bg-green-500/10 border border-green-500/20 text-green-400 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2"
+                >
+                  <CheckCircle2 size={16}/> Task Completed
+                </Button>
+              ) : (
+                <Button
+                  onClick={async () => {
+                    if (!task) return
+                    try {
+                      console.log('Completing task:', task._id);
+                      const response = await fetch(`/api/tasks/${task._id}/complete`, {
+                        method: 'PATCH',
+                      })
+                      if (response.ok) {
+                        console.log('Task completed successfully');
+                        // Refresh task data to update UI
+                        const updatedTaskResponse = await fetch(`/api/tasks/${task._id}`);
+                        if (updatedTaskResponse.ok) {
+                          const updatedTask = await updatedTaskResponse.json();
+                          setTask(updatedTask);
+                        }
+                      } else {
+                        const errorData = await response.json();
+                        console.error('Failed to complete task:', errorData);
+                        alert(`Failed to complete task: ${errorData.message || 'Unknown error'}`);
+                      }
+                    } catch (error) {
+                      console.error('Error completing task:', error)
+                      alert('Error completing task. Check console for details.');
+                    }
+                  }}
+                  className="h-16 bg-[#FC90AF] hover:bg-[#f985a6] text-black rounded-2xl font-black uppercase italic text-lg shadow-xl shadow-[#FC90AF]/10"
+                >
+                  Complete Task
+                </Button>
+              )}
               <Button
                 onClick={async () => {
                   if (!task) return
+                  if (!confirm('Are you sure you want to delete this task?')) return
                   try {
-                    const response = await fetch(`/api/tasks/${task._id}/complete`, {
-                      method: 'PATCH',
+                    const response = await fetch(`/api/tasks/${task._id}`, {
+                      method: 'DELETE',
                     })
                     if (response.ok) {
                       router.push('/tasks')
+                    } else {
+                      const errorData = await response.json();
+                      alert(`Failed to delete task: ${errorData.message || 'Unknown error'}`);
                     }
                   } catch (error) {
-                    console.error('Error completing task:', error)
+                    console.error('Error deleting task:', error)
+                    alert('Error deleting task. Check console for details.');
                   }
                 }}
-                className="h-16 bg-[#FC90AF] hover:bg-[#f985a6] text-black rounded-2xl font-black uppercase italic text-lg shadow-xl shadow-[#FC90AF]/10"
+                className="h-16 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2"
               >
-                Complete Task
+                <Trash size={16}/> Delete Task
               </Button>
             </div>
           </div>
