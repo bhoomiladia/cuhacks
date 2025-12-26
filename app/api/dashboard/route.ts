@@ -23,7 +23,7 @@ export async function GET() {
         // 3. Fetch real user from DB
         const user = await User.findById(decoded.userId);
         const tasks = await Task.find({ userId: decoded.userId });
-        console.log("User Tasks:", tasks);
+        // console.log("User Tasks:", tasks);
         if (user) {
           userName = user.name;
           titles = tasks.map(task => task.title);
