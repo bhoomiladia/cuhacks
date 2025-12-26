@@ -44,6 +44,17 @@ const UserSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user',
   },
+  gmailAccessToken: {
+    type: String,
+    select: false,
+  },
+  gmailRefreshToken: {
+    type: String,
+    select: false,
+  },
+  gmailEmail: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
