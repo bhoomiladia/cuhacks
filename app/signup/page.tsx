@@ -23,6 +23,8 @@ export default function SignupPage() {
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [serverError, setServerError] = useState("")
   const [serverSuccess, setServerSuccess] = useState("")
+  const [title, setTitle] = useState("")
+  const [bio, setBio] = useState("")
 
   const rules = {
     length: password.length >= 8,
@@ -52,7 +54,14 @@ export default function SignupPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ name: fullName, email, password }),
+          // Inside your fetch call:
+          body: JSON.stringify({ 
+            name: fullName, 
+            email, 
+            password, 
+            title, 
+            bio 
+          }),
         });
 
         const data = await res.json();
@@ -137,6 +146,29 @@ export default function SignupPage() {
                 </div>
               </div>
             </div>
+
+                    <div className="flex flex-col gap-4 mt-2">
+          <div className="flex flex-col">
+            <label className="text-xs font-medium text-gray-300 uppercase tracking-widest mb-1">Professional Title</label>
+            <input 
+              type="text" 
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full h-11 px-4 rounded-lg border border-white/10 focus:border-[#8943ea] outline-none bg-white/5 text-white transition-all" 
+              placeholder="e.g. Software Engineer" 
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-xs font-medium text-gray-300 uppercase tracking-widest mb-1">Short Bio</label>
+            <textarea 
+              value={bio} 
+              onChange={(e) => setBio(e.target.value)}
+              className="w-full h-20 p-4 rounded-lg border border-white/10 focus:border-[#8943ea] outline-none bg-white/5 text-white transition-all resize-none" 
+              placeholder="Tell us a bit about yourself..." 
+            />
+          </div>
+        </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 px-1">
               <Rule label="8+ Characters" met={rules.length} />

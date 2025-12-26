@@ -59,6 +59,15 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  title: {
+    type: String,
+    default: "Professional", // Fallback for existing users
+  },
+  bio: {
+    type: String,
+    maxlength: [160, 'Bio cannot be more than 160 characters'],
+    default: "",
+  },
 });
 
 export default mongoose.models.User || mongoose.model('User', UserSchema);

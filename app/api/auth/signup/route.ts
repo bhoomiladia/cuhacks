@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { name, email, password } = await req.json();
+    const { name, email, password, title, bio } = await req.json();
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -30,12 +30,14 @@ export async function POST(req: Request) {
     const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      verificationToken,
-      verificationTokenExpiry,
-    });
+  name,
+  email,
+  password: hashedPassword,
+  title: title || "Professional", // Default if empty
+  bio: bio || "",                 // Default if empty
+  verificationToken,
+  verificationTokenExpiry,
+});
 
     await sendVerificationEmail(email, verificationToken);
 
