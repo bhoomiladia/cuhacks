@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
+import Task from '@/models/Task';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET() {
@@ -13,7 +14,7 @@ export async function GET() {
     const token = cookieStore.get('token')?.value;
 
     let userName = "Guest";
-    
+    let titles = []
     if (token) {
       // 2. Use your existing verifyToken logic
       const decoded: any = verifyToken(token);
@@ -21,12 +22,15 @@ export async function GET() {
       if (decoded && decoded.userId) {
         // 3. Fetch real user from DB
         const user = await User.findById(decoded.userId);
+        const tasks = await Task.find({ userId: decoded.userId });
+        console.log("User Tasks:", tasks);
         if (user) {
           userName = user.name;
+          titles = tasks.map(task => task.title);
         }
       }
     }
-
+    
     // This is the data structure your frontend page.tsx expects
     const realData = {
       user: { 
@@ -38,10 +42,7 @@ export async function GET() {
         tasksCompleted: "0%", 
         aiUptime: "24h" 
       },
-      activeTasks: [
-        'Connect to Task Model', 
-        'Implement Gmail API'
-      ],
+      activeTasks: titles,
       executionLogs: [
         'Database: Connected',
         `Auth: Verified as ${userName}`,
