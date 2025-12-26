@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { 
   Send, BrainCircuit, Zap, Target, Activity, 
   Quote, Sparkles, Loader2, StickyNote, Home, Users,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Mic
 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -37,7 +37,35 @@ export default function NeuralNotesPage() {
   useEffect(() => {
     fetchDailyData()
   }, [])
+  const [isListening, setIsListening] = useState(false);
 
+  const startListening = () => {
+    // Check if browser supports SpeechRecognition
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      alert("Voice typing is not supported in this browser.");
+      return;
+    }
+  
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false; // Stops automatically when you stop talking
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+  
+    recognition.onstart = () => setIsListening(true);
+    
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setNoteInput((prev) => prev + (prev ? " " : "") + transcript);
+      setIsListening(false);
+    };
+  
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+  
+    recognition.start();
+  };
   // 2. Handle New Note Submission
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -130,29 +158,49 @@ export default function NeuralNotesPage() {
             </motion.div>
           </AnimatePresence>
         </section>
-
-        {/* INPUT AREA */}
         <section className="mb-12">
-          <form onSubmit={handleAddNote} className="relative group">
-            <div className={`absolute inset-0 bg-[#FC90AF]/5 blur-2xl transition-opacity ${isAnalyzing ? 'opacity-100' : 'opacity-0'}`} />
-            <div className="relative bg-[#1f1f2e] border border-white/10 p-2 rounded-[2rem] flex items-center">
-              <input 
-                value={noteInput}
-                onChange={(e) => setNoteInput(e.target.value)}
-                placeholder={isAnalyzing ? "Gemini is analyzing..." : "Log a thought to update the analysis..."}
-                disabled={isAnalyzing}
-                className="flex-1 bg-transparent py-5 px-6 outline-none text-sm font-bold text-white placeholder:text-gray-700 disabled:opacity-50"
-              />
-              <Button 
-                type="submit"
-                disabled={isAnalyzing}
-                className="h-12 w-12 rounded-2xl bg-[#FC90AF] text-black hover:scale-105 transition-all flex items-center justify-center"
-              >
-                {isAnalyzing ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
-              </Button>
-            </div>
-          </form>
-        </section>
+  <form onSubmit={handleAddNote} className="relative group">
+    {/* Background Glow */}
+    <div className={`absolute inset-0 bg-[#FC90AF]/5 blur-2xl transition-opacity ${(isAnalyzing || isListening) ? 'opacity-100' : 'opacity-0'}`} />
+    
+    <div className="relative bg-[#1f1f2e] border border-white/10 p-2 rounded-[2rem] flex items-center gap-1">
+      <input 
+        value={noteInput}
+        onChange={(e) => setNoteInput(e.target.value)}
+        placeholder={
+          isListening ? "Listening to you..." : 
+          isAnalyzing ? "Gemini is reflecting..." : 
+          "Log a thought or tap the mic..."
+        }
+        disabled={isAnalyzing}
+        className="flex-1 bg-transparent py-5 px-6 outline-none text-sm font-bold text-white placeholder:text-gray-700 disabled:opacity-50"
+      />
+
+      {/* VOICE BUTTON */}
+      <button
+        type="button"
+        onClick={startListening}
+        disabled={isAnalyzing}
+        className={`h-12 w-12 rounded-2xl flex items-center justify-center transition-all ${
+          isListening 
+          ? "bg-[#FC90AF] text-black animate-pulse shadow-[0_0_15px_#FC90AF]" 
+          : "bg-white/5 text-gray-400 hover:bg-white/10"
+        }`}
+      >
+        <Mic size={20} className={isListening ? "animate-bounce" : ""} />
+      </button>
+
+      {/* SUBMIT BUTTON */}
+      <Button 
+        type="submit"
+        disabled={isAnalyzing || isListening || !noteInput}
+        className="h-12 w-12 rounded-2xl bg-[#FC90AF] text-black hover:scale-105 transition-all flex items-center justify-center disabled:opacity-30 disabled:grayscale"
+      >
+        {isAnalyzing ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
+      </Button>
+    </div>
+  </form>
+</section>
 
         {/* ACTIVITY STREAM */}
         <section className="space-y-6">
