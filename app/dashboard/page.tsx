@@ -15,6 +15,30 @@ export default function DashboardPage() {
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
   const [time, setTime] = useState(new Date())
 
+
+  // --- BACKEND CONNECTION START ---
+  const [dashboardData, setDashboardData] = useState({
+    user: { name: "Loading...", avatar: "https://github.com/shadcn.png" },
+    stats: { emailsSent: 0, tasksCompleted: "0%", aiUptime: "0h" },
+    activeTasks: [],
+    executionLogs: []
+  });
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch('/api/dashboard');
+        const data = await response.json();
+        setDashboardData(data);
+      } catch (error) {
+        console.error("Error fetching dashboard:", error);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+  // --- BACKEND CONNECTION END ---
+
+
   // Update time every second
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 100)
@@ -34,6 +58,7 @@ export default function DashboardPage() {
     { icon: Users, label: "Integrations", href: "/integrations" },
     { icon: HelpCircle, label: "Help / How it works", href: "/help" },
   ]
+
   return (
     <div className="flex h-screen bg-[#15151b] overflow-hidden text-white font-sans selection:bg-[#FC90AF]/30">
       
@@ -163,7 +188,7 @@ export default function DashboardPage() {
                     <span className="text-[10px] text-gray-500 uppercase tracking-widest">Real-time</span>
                   </div>
                   <div className="space-y-4">
-                     {['Planner: Identifying task goals...', 'Interpreter: Parsing natural language...', 'Executor: Sending API request...'].map((log, i) => (
+                     {dashboardData.executionLogs.map((log, i) => (
                        <div key={i} className="flex gap-3 text-xs border-l-2 border-[#a855f7]/30 pl-4 py-1">
                           <span className="text-gray-500 font-mono">0{i+1}</span>
                           <p className={i === 2 ? "text-[#a855f7] font-semibold" : "text-gray-400"}>{log}</p>
@@ -225,7 +250,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                <div className="bg-[#1f1f2e] rounded-3xl p-6 h-32 flex flex-col justify-center">
                   <p className="text-gray-500 text-xs font-bold uppercase mb-1">Emails Sent</p>
-                  <h4 className="text-3xl font-black">12</h4>
+                  <h4 className="text-3xl font-black">{dashboardData.stats.emailsSent}</h4>
                </div>
                <div className="bg-[#1f1f2e] rounded-3xl p-6 h-32 flex flex-col justify-center">
                   <p className="text-gray-500 text-xs font-bold uppercase mb-1">Tasks Completed</p>
@@ -276,7 +301,7 @@ export default function DashboardPage() {
               <div className="bg-white/5 p-5 rounded-[2rem] border border-white/5 flex items-center gap-4">
                 <Avatar className="w-12 h-12 border-2 border-[#FC90AF]/20"><AvatarImage src="https://github.com/shadcn.png" /></Avatar>
                 <div className="flex-1">
-                   <p className="text-sm font-bold">James Todd</p>
+                   <p className="text-sm font-bold">{dashboardData.user.name}</p>
                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Premium Agent Access</p>
                 </div>
                 <div className="p-2 bg-white/5 rounded-xl text-gray-500"><Settings size={16} /></div>
@@ -289,7 +314,7 @@ export default function DashboardPage() {
                     <CheckSquare size={14} className="text-gray-700"/>
                  </div>
                  <div className="space-y-3">
-                    {['Draft Q4 Strategy Email', 'Sync Notion Database'].map((task, i) => (
+                    {dashboardData.activeTasks.map((task, i) => (
                        <div key={i} className="flex items-center gap-4 bg-[#1f1f2e] p-5 rounded-2xl border border-white/5 hover:border-[#FC90AF]/20 transition-all group cursor-pointer">
                           <div className="w-5 h-5 rounded-full border border-white/10 group-hover:border-[#FC90AF] transition-colors" />
                           <p className="text-xs font-medium text-gray-300">{task}</p>
