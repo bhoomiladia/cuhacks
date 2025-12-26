@@ -37,11 +37,11 @@ export function RightPanel({
   
   // --- BACKEND CONNECTION START ---
   const [dashboardData, setDashboardData] = useState({
-    user: { name: "Loading...", avatar: "https://github.com/shadcn.png" },
-    stats: { emailsSent: 0, tasksCompleted: "0%", aiUptime: "0h" },
-    activeTasks: [],
-    executionLogs: []
-  });
+  user: { name: "Loading...", avatar: "https://github.com/shadcn.png", title: "", bio: "" }, // Added title and bio
+  stats: { emailsSent: 0, tasksCompleted: "0%", aiUptime: "0h" },
+  activeTasks: [],
+  executionLogs: []
+});
 
   const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
 
@@ -145,10 +145,19 @@ export function RightPanel({
               <Avatar className="w-12 h-12 border-2 border-[#FC90AF]/20">
                 <AvatarImage src={dashboardData.user.avatar} />
               </Avatar>
-              <div className="flex-1">
-                 <p className="text-sm font-bold text-white">{dashboardData.user.name} </p>
-                 {/* <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Premium Agent Access</p> */}
-              </div>
+                      <div className="flex-1">
+          <p className="text-sm font-bold text-white">{dashboardData.user.name}</p>
+          {/* Displays your Professional Title */}
+          <p className="text-[10px] text-[#FC90AF] font-bold uppercase tracking-widest">
+            {dashboardData.user.title || "Premium Agent Access"}
+          </p>
+          {/* Displays your Bio */}
+          {dashboardData.user.bio && (
+            <p className="text-[10px] text-gray-500 mt-1 italic line-clamp-2">
+              {dashboardData.user.bio}
+            </p>
+          )}
+        </div>
               <div className="p-2 bg-white/5 rounded-xl text-gray-500 hover:text-white cursor-pointer transition-colors">
                 <Settings size={16} />
               </div>

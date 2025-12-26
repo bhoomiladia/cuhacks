@@ -27,7 +27,12 @@ export default function DashboardPage() {
   ]
   // --- BACKEND CONNECTION START ---
   const [dashboardData, setDashboardData] = useState({
-    user: { name: "Loading...", avatar: "https://github.com/shadcn.png" },
+    user: { 
+      name: "Loading...", 
+      avatar: "https://github.com/shadcn.png",
+      title: "", // Add this
+      bio: ""    // Add this
+    },
     stats: { emailsSent: 0, tasksCompleted: "0%", aiUptime: "0h" },
     activeTasks: [],
     executionLogs: []
@@ -244,7 +249,7 @@ export default function DashboardPage() {
                </div>
                <div className="bg-[#1f1f2e] rounded-3xl p-6 h-32 flex flex-col justify-center">
                   <p className="text-gray-500 text-xs font-bold uppercase mb-1">AI Uptime</p>
-                  <h4 className="text-3xl font-black text-[#a855f7]">24h</h4>
+                  <h4 className="text-3xl font-black text-[#a855f7]">{dashboardData.stats.aiUptime}</h4>
                </div>
             </div>
           </div>
