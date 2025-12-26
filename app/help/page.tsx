@@ -12,7 +12,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-
+import { Sidebar } from "@/components/Sidebar"
 export default function HelpPage() {
   // UI States
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -40,27 +40,8 @@ export default function HelpPage() {
     <div className="flex h-screen bg-[#15151b] overflow-hidden text-white font-sans selection:bg-[#FC90AF]/30">
       
       {/* 1. LEFT GLOBAL SIDEBAR */}
-      <nav className={`h-full flex flex-col py-8 gap-8 border-r border-white/5 bg-[#23232f] transition-all duration-300 ${isSidebarOpen ? "w-56 px-4" : "w-20 items-center"}`}>
-        <div className="flex items-center justify-between">
-          <button className="text-4xl font-bold tracking-tighter uppercase p-2 text-white imbue-bold italic">K</button>
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-gray-400 hover:bg-white/5 p-1 rounded-lg">
-            {isSidebarOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-          </button>
-        </div>
-        <div className="flex flex-col gap-3 mt-6">
-          {[
-            { icon: Home, label: "Dashboard", href: "/dashboard" },
-            { icon: Mail, label: "Emails", href: "/emails" },
-            { icon: Users, label: "Agents", href: "/integrations" },
-            { icon: HelpCircle, label: "Help Center", href: "/help", active: true },
-          ].map((item) => (
-            <Link key={item.label} href={item.href} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition ${item.active ? "bg-[#FC90AF]/10 text-[#FC90AF]" : "hover:bg-white/5 text-gray-300"}`}>
-              <item.icon size={18} />
-              {isSidebarOpen && <span className="text-sm font-black tracking-tight">{item.label}</span>}
-            </Link>
-          ))}
-        </div>
-      </nav>
+      <Sidebar isSidebarOpen={isSidebarOpen}
+      setIsSidebarOpen = {setIsSidebarOpen}/>
 
       {/* 2. MAIN CONTENT AREA */}
       <main className="flex-1 overflow-y-auto custom-scrollbar bg-[#15151b]">
