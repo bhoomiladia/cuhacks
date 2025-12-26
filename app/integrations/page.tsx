@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Home, CheckSquare, Mail, Users, ChevronLeft, ChevronRight,
@@ -14,68 +14,100 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Sidebar } from "@/components/Sidebar"
 import { RightPanel } from "@/components/RightPanel"
-// Dummy data for the execution feed
-const executionLogs = [
-  { id: 1, type: "system", text: "Initializing Neural Bridge...", time: "0.001s" },
-  { id: 2, type: "process", text: "Interpreter: Intent 'Analyze Market' identified", time: "0.45s" },
-  { id: 3, type: "success", text: "Planner: 4-step execution path generated", time: "1.12s" },
-]
+import { format } from 'date-fns'
 
-const agents = [
-  {
-    name: "Interpreter",
-    icon: Brain,
-    description: "Translates human ambiguity into machine-executable directives.",
-    status: "active",
-    tasksProcessed: 1247,
-    successRate: 98.5,
-    avgResponseTime: "0.8s",
-    currentLoad: 85,
-    color: "#FC90AF",
-    capabilities: ["Semantic Parsing", "Multi-lingual Context", "Entity Extraction", "Tone Mapping"],
-    model: "K-Alpha-7",
-    memory: "128GB Flash",
-  },
-  {
-    name: "Planner",
-    icon: ListTree,
-    description: "The architect of complexity. Decomposes high-level goals into logic.",
-    status: "active",
-    tasksProcessed: 983,
-    successRate: 96.2,
-    avgResponseTime: "1.2s",
-    currentLoad: 62,
-    color: "#a855f7",
-    capabilities: ["DAG Generation", "Resource Estimation", "Backtracking Logic"],
-    model: "Logic-Grip-v2",
-    memory: "256GB Unified",
-  },
-  {
-    name: "Executor",
-    icon: Zap,
-    description: "The hands of the system. Direct API manipulation and tool usage.",
-    status: "active",
-    tasksProcessed: 2103,
-    successRate: 99.1,
-    avgResponseTime: "1.8s",
-    currentLoad: 95,
-    color: "#4ade80",
-    capabilities: ["OAuth3 Handshaking", "Rate-limit handling", "Parallel Execution"],
-    model: "Action-Sync",
-    memory: "512GB High-Speed",
-  },
-]
+const agentIcons: { [key: string]: any } = {
+  Interpreter: Brain,
+  Planner: ListTree,
+  Executor: Zap,
+}
+
+const agentColors: { [key: string]: string } = {
+  Interpreter: "#FC90AF",
+  Planner: "#a855f7",
+  Executor: "#4ade80",
+}
+
+const agentModels: { [key: string]: string } = {
+  Interpreter: "K-Alpha-7",
+  Planner: "Logic-Grip-v2",
+  Executor: "Action-Sync",
+}
+
+const agentMemory: { [key: string]: string } = {
+  Interpreter: "128GB Flash",
+  Planner: "256GB Unified",
+  Executor: "512GB High-Speed",
+}
+
+const agentCapabilities: { [key: string]: string[] } = {
+  Interpreter: ["Semantic Parsing", "Multi-lingual Context", "Entity Extraction", "Tone Mapping"],
+  Planner: ["DAG Generation", "Resource Estimation", "Backtracking Logic"],
+  Executor: ["OAuth3 Handshaking", "Rate-limit handling", "Parallel Execution"],
+}
 
 export default function AgentsPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
   const [selectedAgent, setSelectedAgent] = useState<any>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [agents, setAgents] = useState<any[]>([])
+  const [systemStats, setSystemStats] = useState<any>(null)
+  const [recentExecutions, setRecentExecutions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchAgentStats()
+    const interval = setInterval(fetchAgentStats, 5000) // Refresh every 5 seconds
+    return () => clearInterval(interval)
+  }, [])
+
+  const fetchAgentStats = async () => {
+    try {
+      const response = await fetch('/api/agents/stats')
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Map agent data with icons and metadata
+        const mappedAgents = data.agents.map((agent: any) => ({
+          ...agent,
+          icon: agentIcons[agent.name] || Brain,
+          color: agentColors[agent.name] || "#FC90AF",
+          model: agentModels[agent.name] || "Unknown",
+          memory: agentMemory[agent.name] || "Unknown",
+          capabilities: agentCapabilities[agent.name] || [],
+          description: agent.name === 'Interpreter' 
+            ? "Translates human ambiguity into machine-executable directives."
+            : agent.name === 'Planner'
+            ? "The architect of complexity. Decomposes high-level goals into logic."
+            : "The hands of the system. Direct API manipulation and tool usage.",
+        }))
+        
+        setAgents(mappedAgents)
+        setSystemStats(data.systemStats)
+        setRecentExecutions(data.recentExecutions || [])
+      }
+    } catch (error) {
+      console.error('Error fetching agent stats:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleAgentClick = (agent: any) => {
     setSelectedAgent(agent)
     setIsDetailOpen(true)
   }
+
+  // Generate execution logs from recent executions
+  const executionLogs = recentExecutions.slice(0, 5).map((exec, i) => ({
+    id: i + 1,
+    type: exec.status === 'completed' ? 'success' : exec.status === 'failed' ? 'error' : 'process',
+    text: `${exec.status === 'completed' ? '✓' : exec.status === 'failed' ? '✗' : '→'} ${exec.title}`,
+    time: exec.completedAt 
+      ? `${((new Date(exec.completedAt).getTime() - new Date(exec.startedAt).getTime()) / 1000).toFixed(2)}s`
+      : 'running...',
+  }))
 
   return (
     <div className="flex h-screen bg-[#15151b] overflow-hidden text-white font-sans selection:bg-[#FC90AF]/30">
@@ -103,10 +135,10 @@ export default function AgentsPage() {
             {/* Detailed System Header Grid */}
             <div className="grid grid-cols-4 gap-4 mb-10">
                 {[
-                  { label: "Active Nodes", val: "4", icon: Waypoints, color: "#FC90AF" },
-                  { label: "Total Tokens", val: "1.2M", icon: Database, color: "#a855f7" },
-                  { label: "System Health", val: "99.8%", icon: ShieldCheck, color: "#4ade80" },
-                  { label: "Uptime", val: "14d", icon: Clock, color: "#3b82f6" },
+                  { label: "Active Nodes", val: systemStats?.runningTasks?.toString() || "0", icon: Waypoints, color: "#FC90AF" },
+                  { label: "Total Tokens", val: systemStats?.totalTokens || "1.2M", icon: Database, color: "#a855f7" },
+                  { label: "System Health", val: systemStats ? `${systemStats.systemHealth}%` : "100%", icon: ShieldCheck, color: "#4ade80" },
+                  { label: "Total Tasks", val: systemStats?.totalTasks?.toString() || "0", icon: Clock, color: "#3b82f6" },
                 ].map((stat, i) => (
                   <div key={i} className="bg-[#1f1f2e] p-5 rounded-[2rem] border border-white/5 group hover:border-[#FC90AF]/30 transition-colors">
                       <stat.icon size={16} style={{ color: stat.color }} className="mb-3" />
@@ -118,7 +150,24 @@ export default function AgentsPage() {
           </header>
 
           <div className="px-10 pb-10 space-y-4">
-            {agents.map((agent) => (
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center space-y-4">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-12 h-12 border-4 border-[#FC90AF]/20 border-t-[#FC90AF] rounded-full mx-auto"
+                  />
+                  <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Loading Agent Data...</p>
+                </div>
+              </div>
+            ) : agents.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">No agent executions yet</p>
+                <p className="text-gray-600 text-xs mt-2">Create a task to see agent activity</p>
+              </div>
+            ) : (
+              agents.map((agent) => (
               <motion.div
                 key={agent.name}
                 onClick={() => handleAgentClick(agent)}
@@ -161,7 +210,7 @@ export default function AgentsPage() {
                    </div>
                 </div>
               </motion.div>
-            ))}
+            )))}
           </div>
         </motion.div>
 

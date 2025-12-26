@@ -42,6 +42,77 @@ const TaskSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
+  // Agent execution fields
+  executionStatus: {
+    type: String,
+    enum: ['idle', 'running', 'completed', 'failed'],
+    default: 'idle',
+  },
+  taskUnderstanding: {
+    type: String,
+  },
+  executionPlan: {
+    type: String,
+  },
+  intermediateSteps: {
+    type: [String],
+    default: [],
+  },
+  finalResult: {
+    type: String,
+  },
+  assistant_response: {
+    type: String,
+  },
+  executionStartedAt: {
+    type: Date,
+  },
+  executionCompletedAt: {
+    type: Date,
+  },
+  // Email generation fields
+  emailDraft: {
+    subject: String,
+    body: String,
+    recipient: String,
+  },
+  emailSent: {
+    type: Boolean,
+    default: false,
+  },
+  sentAt: {
+    type: Date,
+  },
+  // Chat messages
+  chatMessages: [{
+    role: {
+      type: String,
+      enum: ['user', 'assistant'],
+      required: true,
+    },
+    content: {
+      type: String,
+      required: true,
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
+  // Execution logs for background agents
+  executionLogs: [{
+    agent: String,
+    step: String,
+    status: {
+      type: String,
+      enum: ['running', 'completed', 'failed'],
+    },
+    output: String,
+    timestamp: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
   createdAt: {
     type: Date,
     default: Date.now,

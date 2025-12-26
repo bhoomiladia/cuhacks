@@ -7,7 +7,7 @@ import {
   Sparkles, Mail, CheckCircle2, Clock, Calendar, 
   Paperclip, Send, Zap, FileText, Activity, 
   ChevronLeft, ChevronRight, Home, PieChart, 
-  Users, Settings, LogOut, HelpCircle, Bot, ShieldCheck, Download
+  Users, Settings, LogOut, HelpCircle, Bot, ShieldCheck, Download, User
 } from "lucide-react"
 import { Sidebar } from '@/components/Sidebar'
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,31 @@ interface Task {
   fileUrl?: string;
   fileName?: string;
   createdAt: string;
+  executionStatus?: 'idle' | 'running' | 'completed' | 'failed';
+  taskUnderstanding?: string;
+  executionPlan?: string;
+  intermediateSteps?: string[];
+  finalResult?: string;
+  assistant_response?: string;
+  emailDraft?: {
+    subject: string;
+    body: string;
+    recipient?: string;
+  };
+  emailSent?: boolean;
+  sentAt?: string;
+  chatMessages?: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: Date | string;
+  }>;
+  executionLogs?: Array<{
+    agent: string;
+    step: string;
+    status: 'running' | 'completed' | 'failed';
+    output: string;
+    timestamp: Date | string;
+  }>;
 }
 
 export default function TaskControlPage() {
@@ -40,6 +65,14 @@ export default function TaskControlPage() {
   
   const [task, setTask] = useState<Task | null>(null)
   const [loading, setLoading] = useState(true)
+  const [executing, setExecuting] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [editingDraft, setEditingDraft] = useState(false)
+  const [draftSubject, setDraftSubject] = useState('')
+  const [draftBody, setDraftBody] = useState('')
+  const [draftRecipient, setDraftRecipient] = useState('')
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; timestamp?: Date }>>([])
+  const [sendingMessage, setSendingMessage] = useState(false)
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -48,6 +81,35 @@ export default function TaskControlPage() {
         if (response.ok) {
           const data = await response.json()
           setTask(data)
+          
+          // Initialize draft editing state
+          if (data.emailDraft) {
+            setDraftSubject(data.emailDraft.subject || '')
+            setDraftBody(data.emailDraft.body || '')
+            setDraftRecipient(data.emailDraft.recipient || '')
+          }
+          
+          // Load chat messages from DB or initialize
+          if (data.chatMessages && data.chatMessages.length > 0) {
+            setChatMessages(data.chatMessages.map((m: any) => ({
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+            })))
+          } else {
+            // Auto-respond to task creation immediately with initial response
+            const initialResponse = generateInitialResponse(data)
+            setChatMessages([{
+              role: 'assistant',
+              content: initialResponse,
+              timestamp: new Date(),
+            }])
+            
+            // Save initial response to DB and trigger background execution
+            if (!data.executionStatus || data.executionStatus === 'idle') {
+              triggerInitialExecution(data._id, data, initialResponse)
+            }
+          }
         } else {
           console.error('Failed to fetch task')
         }
@@ -62,6 +124,330 @@ export default function TaskControlPage() {
       fetchTask()
     }
   }, [params.id])
+
+  const generateInitialResponse = (task: Task): string => {
+    const title = task.title.toLowerCase()
+    const desc = (task.description || '').toLowerCase()
+    const fullText = `${title} ${desc}`
+    
+    // Agentic AI Example Override
+    if (fullText.includes('agentic ai')) {
+        // Only return definition if it's a "what is" or vague question
+        if (fullText.includes('what') || fullText.includes('define') || fullText.includes('explain') || fullText.length < 50) {
+            return `Agentic AI refers to systems designed to act autonomously toward goals rather than simply responding to prompts. These systems can plan steps, make decisions, use tools, and adapt their behavior based on feedback. Instead of waiting for continuous user input, an agentic AI can break down a task, execute subtasks, and adjust its approach as conditions change. This makes it useful for workflows like research, scheduling, automation, and multi-step problem solving.`
+        }
+        
+        // If it's a specific question about companies/usage, answer directly
+        if (fullText.includes('companies') || fullText.includes('use') || fullText.includes('industry')) {
+             return "Yes, companies like OpenAI, Anthropic, and Microsoft are actively deploying agentic AI. Examples include coding assistants (Devin), autonomous research agents, and customer support bots that can take actions like processing refunds or booking appointments. The industry is shifting from static chatbots to goal-oriented agents."
+        }
+    }
+
+    // Interpreter Logic (Client-side mirror)
+    const isEmail = fullText.includes('email') || fullText.includes('send') || fullText.includes('draft') || fullText.includes('write')
+    
+    if (isEmail) {
+      const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/
+      const emailMatch = fullText.match(emailRegex)
+      const subject = task.title.replace(/^(draft|send|compose|write|email)\s+/i, '').replace(/\s+(email|mail)$/i, '')
+      
+      return `I have drafted an email regarding "${subject}"${emailMatch ? ` to ${emailMatch[0]}` : ''}. You can review and send it below.`
+    }
+    
+    if (fullText.includes('frontend') && (fullText.includes('intern') || fullText.includes('job'))) {
+       return `Companies hiring for frontend roles include Google (Summer 2025), Meta (Rolling), Microsoft, and Amazon.
+
+Success requires:
+1. **Strong Portfolio**: 3-5 projects using React.
+2. **Technical Skills**: JavaScript (ES6+), TypeScript, CSS/Tailwind.
+3. **Fundamentals**: Data structures, algorithms, and system design basics.
+
+Apply 6-9 months in advance for major tech companies.`
+    }
+    
+    // Default Direct Response
+    return `${task.title} refers to a specific objective or topic. Addressing this typically requires identifying key constraints, gathering necessary resources, and executing a structured plan.`;
+  }
+  
+  const triggerInitialExecution = async (taskId: string, taskData: Task, initialResponse: string) => {
+    // Save initial response to DB first
+    try {
+      await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatMessages: [{
+            role: 'assistant',
+            content: initialResponse,
+            timestamp: new Date(),
+          }],
+        }),
+      })
+    } catch (e) {
+      // Continue even if save fails
+    }
+    
+    // Send initial message to Langflow in background
+    try {
+      await fetch('/api/langflow/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          message: taskData.title + (taskData.description ? `: ${taskData.description}` : ''),
+          chatHistory: [{
+            role: 'assistant',
+            content: initialResponse,
+          }],
+        }),
+      })
+      
+      // Refresh task after execution
+      const taskResponse = await fetch(`/api/tasks/${taskId}`)
+      if (taskResponse.ok) {
+        const updatedTask = await taskResponse.json()
+        setTask(updatedTask)
+        
+        // Update chat with any new messages from execution
+        if (updatedTask.chatMessages && updatedTask.chatMessages.length > chatMessages.length) {
+          setChatMessages(updatedTask.chatMessages.map((m: any) => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+          })))
+        }
+      }
+    } catch (error) {
+      console.error('Error triggering initial execution:', error)
+    }
+  }
+  
+  const triggerExecution = async (taskId: string) => {
+    setExecuting(true)
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/execute`, {
+        method: 'POST',
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        // Refresh task data
+        const taskResponse = await fetch(`/api/tasks/${taskId}`)
+        if (taskResponse.ok) {
+          const updatedTask = await taskResponse.json()
+          setTask(updatedTask)
+          if (updatedTask.emailDraft) {
+            setDraftSubject(updatedTask.emailDraft.subject || '')
+            setDraftBody(updatedTask.emailDraft.body || '')
+            setDraftRecipient(updatedTask.emailDraft.recipient || '')
+          }
+          
+          // Add execution result to chat when completed
+          if (updatedTask.executionStatus === 'completed' && updatedTask.finalResult) {
+            setChatMessages(prev => {
+              // Check if result already in chat
+              const hasResult = prev.some(msg => msg.content === updatedTask.finalResult)
+              if (!hasResult) {
+                return [...prev, {
+                  role: 'assistant',
+                  content: updatedTask.finalResult,
+                  timestamp: new Date(),
+                }]
+              }
+              return prev
+            })
+          }
+        }
+      } else {
+        // Handle different error cases
+        const errorMessage = result.error || result.message || 'Failed to trigger execution'
+        console.error('Failed to trigger execution:', errorMessage)
+        
+        // If execution failed, refresh task to get updated status
+        const taskResponse = await fetch(`/api/tasks/${taskId}`)
+        if (taskResponse.ok) {
+          const updatedTask = await taskResponse.json()
+          setTask(updatedTask)
+        }
+      }
+    } catch (error: any) {
+      console.error('Error triggering execution:', error)
+      // Try to refresh task even on network errors
+      try {
+        const taskResponse = await fetch(`/api/tasks/${taskId}`)
+        if (taskResponse.ok) {
+          const updatedTask = await taskResponse.json()
+          setTask(updatedTask)
+        }
+      } catch (refreshError) {
+        console.error('Error refreshing task:', refreshError)
+      }
+    } finally {
+      setExecuting(false)
+    }
+  }
+
+  const handleRetryExecution = () => {
+    if (task) {
+      triggerExecution(task._id)
+    }
+  }
+
+  const handleSaveDraft = async () => {
+    if (!task) return
+    
+    try {
+      const response = await fetch(`/api/tasks/${task._id}/email`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: draftSubject,
+          body: draftBody,
+          recipient: draftRecipient,
+        }),
+      })
+      
+      if (response.ok) {
+        setEditingDraft(false)
+        // Refresh task
+        const taskResponse = await fetch(`/api/tasks/${task._id}`)
+        if (taskResponse.ok) {
+          const updatedTask = await taskResponse.json()
+          setTask(updatedTask)
+        }
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error)
+    }
+  }
+
+  const handleSendChatMessage = async () => {
+    if (!chatInput.trim() || !task || sendingMessage) return
+    
+    const userMessage = chatInput.trim()
+    setChatInput('')
+    setSendingMessage(true)
+    
+    // Add user message to chat immediately
+    setChatMessages(prev => [...prev, {
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date(),
+    }])
+    
+    try {
+      // Use new Langflow execute endpoint
+      const response = await fetch('/api/langflow/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId: task._id,
+          message: userMessage,
+          chatHistory: chatMessages.map(m => ({ role: m.role, content: m.content })),
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Add assistant response immediately
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.response,
+          timestamp: new Date(),
+        }])
+        
+        // Refresh task to get updated execution logs and email draft
+        const taskResponse = await fetch(`/api/tasks/${task._id}`)
+        if (taskResponse.ok) {
+          const updatedTask = await taskResponse.json()
+          setTask(updatedTask)
+          
+          if (updatedTask.emailDraft) {
+            setDraftSubject(updatedTask.emailDraft.subject || '')
+            setDraftBody(updatedTask.emailDraft.body || '')
+            setDraftRecipient(updatedTask.emailDraft.recipient || '')
+          }
+        }
+        
+        // Trigger background execution update
+        updateExecutionDisplay(data.executionLogs || [])
+      } else {
+        const error = await response.json()
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `Sorry, I encountered an error: ${error.message || 'Unable to process your message'}`,
+          timestamp: new Date(),
+        }])
+      }
+    } catch (error: any) {
+      console.error('Error sending chat message:', error)
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error processing your message. Please try again.',
+        timestamp: new Date(),
+      }])
+    } finally {
+      setSendingMessage(false)
+    }
+  }
+  
+  const updateExecutionDisplay = (logs: any[]) => {
+    // Update task understanding and execution plan from logs
+    if (task) {
+      const interpreterLog = logs.find((l: any) => l.agent === 'Interpreter')
+      const researchLog = logs.find((l: any) => l.agent === 'Research')
+      const executorLogs = logs.filter((l: any) => l.agent === 'Executor')
+      
+      if (interpreterLog) {
+        setTask(prev => prev ? { ...prev, taskUnderstanding: interpreterLog.output } : null)
+      }
+      
+      if (researchLog) {
+        setTask(prev => prev ? { ...prev, executionPlan: researchLog.output } : null)
+      }
+      
+      if (executorLogs.length > 0) {
+        setTask(prev => prev ? { 
+          ...prev, 
+          intermediateSteps: executorLogs.map((l: any) => l.step) 
+        } : null)
+      }
+    }
+  }
+
+  const handleSendEmail = async () => {
+    if (!task || !draftRecipient) return
+    
+    setSendingEmail(true)
+    try {
+      const response = await fetch(`/api/tasks/${task._id}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient: draftRecipient,
+        }),
+      })
+      
+      if (response.ok) {
+        // Refresh task
+        const taskResponse = await fetch(`/api/tasks/${task._id}`)
+        if (taskResponse.ok) {
+          const updatedTask = await taskResponse.json()
+          setTask(updatedTask)
+        }
+      } else {
+        const error = await response.json()
+        alert(`Failed to send email: ${error.message || error.error}`)
+      }
+    } catch (error: any) {
+      console.error('Error sending email:', error)
+      alert(`Failed to send email: ${error.message}`)
+    } finally {
+      setSendingEmail(false)
+    }
+  }
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center bg-[#15151b] text-white">Loading task...</div>
@@ -149,32 +535,149 @@ export default function TaskControlPage() {
               </div>
             </section>
 
-            {/* 🤖 AGENT INTELLIGENCE OUTPUT */}
+            {/* 🤖 RESPONSE OUTPUT */}
             <section className="space-y-4">
-              <div className="flex items-center gap-2 px-2">
-                <Sparkles size={16} className="text-[#a855f7]" />
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Agent Intelligence</h3>
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-[#a855f7]" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Response</h3>
+                </div>
+                {task.executionStatus === 'failed' && (
+                  <Button
+                    onClick={handleRetryExecution}
+                    disabled={executing}
+                    className="h-8 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                  >
+                    {executing ? 'Retrying...' : 'Retry Execution'}
+                  </Button>
+                )}
               </div>
               <Card className="bg-[#1f1f2e] border-white/5 p-8 rounded-[2.5rem] border-l-4 border-l-[#a855f7] space-y-8">
-                <div>
-                  <h4 className="text-[10px] font-black uppercase text-[#a855f7] mb-3 tracking-widest flex items-center gap-2">
-                    <ShieldCheck size={14}/> Task Understanding
-                  </h4>
-                  <p className="bg-black/20 p-5 rounded-2xl border border-white/5 text-gray-400 text-sm font-mono leading-relaxed">
-                    Analyzing input for: {task.title}. Extracting key requirements. Generating execution plan based on {task.priority} priority.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {['Data Ingestion', 'Trend Analysis', 'Slide Drafting'].map((step, i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                      <div className="h-8 w-8 rounded-lg bg-[#a855f7]/20 text-[#a855f7] flex items-center justify-center text-xs font-black">0{i+1}</div>
-                      <span className="text-[10px] font-black uppercase tracking-tighter">{step}</span>
+                {(executing || task.executionStatus === 'running') && !task.finalResult ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center space-y-4">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-12 h-12 border-4 border-[#a855f7]/20 border-t-[#a855f7] rounded-full mx-auto"
+                      />
+                      <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Generating Response...</p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : task.executionStatus === 'failed' ? (
+                  <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl">
+                    <p className="text-red-400 text-sm font-mono">{task.finalResult || 'Execution failed'}</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Final Output */}
+                    {(task.assistant_response || task.finalResult || (chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant' ? chatMessages[chatMessages.length - 1].content : null)) && (
+                      <div>
+                        <h4 className="text-[10px] font-black uppercase text-[#a855f7] mb-3 tracking-widest flex items-center gap-2">
+                          <CheckCircle2 size={14}/> Result
+                        </h4>
+                        <p className="bg-black/20 p-5 rounded-2xl border border-white/5 text-gray-400 text-sm font-mono leading-relaxed whitespace-pre-wrap">
+                          {task.assistant_response || task.finalResult || (chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant' ? chatMessages[chatMessages.length - 1].content : '')}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </Card>
             </section>
+
+            {/* 📧 EMAIL DRAFT SECTION */}
+            {task.emailDraft && (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-2">
+                    <Mail size={16} className="text-blue-400" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Email Draft</h3>
+                  </div>
+                  {!editingDraft && (
+                    <Button
+                      onClick={() => setEditingDraft(true)}
+                      className="h-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                    >
+                      Edit Draft
+                    </Button>
+                  )}
+                </div>
+                <Card className="bg-[#1f1f2e] border-white/5 p-8 rounded-[2.5rem] border-l-4 border-l-blue-400 space-y-6">
+                  {editingDraft ? (
+                    <>
+                      <div>
+                        <label className="text-[10px] font-black uppercase text-gray-500 mb-2 block">Recipient</label>
+                        <input
+                          type="email"
+                          value={draftRecipient}
+                          onChange={(e) => setDraftRecipient(e.target.value)}
+                          placeholder="recipient@example.com"
+                          className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black uppercase text-gray-500 mb-2 block">Subject</label>
+                        <input
+                          type="text"
+                          value={draftSubject}
+                          onChange={(e) => setDraftSubject(e.target.value)}
+                          placeholder="Email subject"
+                          className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black uppercase text-gray-500 mb-2 block">Body</label>
+                        <textarea
+                          value={draftBody}
+                          onChange={(e) => setDraftBody(e.target.value)}
+                          placeholder="Email body"
+                          rows={8}
+                          className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400/50 resize-none"
+                        />
+                      </div>
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={handleSaveDraft}
+                          className="flex-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                        >
+                          Save Draft
+                        </Button>
+                        <Button
+                          onClick={() => setEditingDraft(false)}
+                          variant="outline"
+                          className="border-white/10 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-gray-500 mb-2">To:</p>
+                        <p className="text-sm text-gray-300">{task.emailDraft.recipient || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-gray-500 mb-2">Subject:</p>
+                        <p className="text-sm text-gray-300">{task.emailDraft.subject}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-gray-500 mb-2">Body:</p>
+                        <p className="text-sm text-gray-300 whitespace-pre-wrap">{task.emailDraft.body}</p>
+                      </div>
+                      {task.emailSent && task.sentAt && (
+                        <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl">
+                          <p className="text-green-400 text-xs font-bold uppercase tracking-widest">
+                            ✓ Sent on {format(new Date(task.sentAt), 'MMM d, yyyy HH:mm')}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </Card>
+              </section>
+            )}
 
             {/* 💬 TASK CHAT LOG */}
             <section className="space-y-4">
@@ -184,34 +687,114 @@ export default function TaskControlPage() {
               </div>
               <div className="bg-[#1f1f2e] border border-white/5 rounded-[2.5rem] h-80 flex flex-col overflow-hidden">
                 <div className="flex-1 p-6 space-y-4 overflow-y-auto custom-scrollbar font-medium">
-                  <div className="flex gap-3 max-w-[80%]">
-                    <div className="w-8 h-8 rounded-full bg-[#FC90AF]/20 flex items-center justify-center text-[#FC90AF]"><Bot size={14}/></div>
-                    <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none text-xs text-gray-300">
-                      I'm ready to assist with "{task.title}". What specific details would you like me to focus on?
+                  {chatMessages.length === 0 ? (
+                    <div className="flex gap-3 max-w-[80%]">
+                      <div className="w-8 h-8 rounded-full bg-[#FC90AF]/20 flex items-center justify-center text-[#FC90AF]"><Bot size={14}/></div>
+                      <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none text-xs text-gray-300">
+                        I'm ready to assist with "{task.title}". What specific details would you like me to focus on?
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    chatMessages.map((msg, idx) => (
+                      <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'ml-auto max-w-[80%] flex-row-reverse' : 'max-w-[80%]'}`}>
+                        {msg.role === 'assistant' && (
+                          <div className="w-8 h-8 rounded-full bg-[#FC90AF]/20 flex items-center justify-center text-[#FC90AF] flex-shrink-0">
+                            <Bot size={14}/>
+                          </div>
+                        )}
+                        <div className={`p-4 rounded-2xl text-xs ${
+                          msg.role === 'user' 
+                            ? 'bg-[#FC90AF]/20 text-white rounded-tr-none' 
+                            : 'bg-white/5 text-gray-300 rounded-tl-none'
+                        } whitespace-pre-wrap`}>
+                          {msg.content}
+                        </div>
+                        {msg.role === 'user' && (
+                          <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
+                            <User size={14}/>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                  {sendingMessage && (
+                    <div className="flex gap-3 max-w-[80%]">
+                      <div className="w-8 h-8 rounded-full bg-[#FC90AF]/20 flex items-center justify-center text-[#FC90AF]"><Bot size={14}/></div>
+                      <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none text-xs text-gray-400">
+                        <span className="animate-pulse">Thinking...</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="p-4 bg-black/20 flex gap-2">
                   <input 
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendChatMessage()
+                      }
+                    }}
                     placeholder="Ask the agent to refine this task..." 
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 text-xs focus:outline-none focus:border-[#FC90AF]/50 transition-colors"
+                    disabled={sendingMessage}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 text-xs focus:outline-none focus:border-[#FC90AF]/50 transition-colors disabled:opacity-50"
                   />
-                  <Button className="bg-[#FC90AF] hover:bg-[#f985a6] text-black rounded-xl px-4"><Send size={16}/></Button>
+                  <Button 
+                    onClick={handleSendChatMessage}
+                    disabled={!chatInput.trim() || sendingMessage}
+                    className="bg-[#FC90AF] hover:bg-[#f985a6] text-black rounded-xl px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Send size={16}/>
+                  </Button>
                 </div>
               </div>
             </section>
 
             {/* ⚙️ ACTION BUTTONS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-12">
-              <Button className="h-16 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2">
-                <Zap size={16} className="text-[#a855f7]"/> Re-Run AI
-              </Button>
-              <Button className="h-16 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2">
-                <Mail size={16} className="text-blue-400"/> Send Draft
-              </Button>
-              <Button className="h-16 bg-[#FC90AF] hover:bg-[#f985a6] text-black rounded-2xl font-black uppercase italic text-lg shadow-xl shadow-[#FC90AF]/10">
+              {task.executionStatus === 'failed' && (
+                <Button
+                  onClick={handleRetryExecution}
+                  disabled={executing}
+                  className="h-16 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2"
+                >
+                  <Zap size={16}/> {executing ? 'Retrying...' : 'Retry Execution'}
+                </Button>
+              )}
+              {task.emailDraft && !task.emailSent && (
+                <Button
+                  onClick={handleSendEmail}
+                  disabled={sendingEmail || !draftRecipient}
+                  className="h-16 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2"
+                >
+                  <Mail size={16}/> {sendingEmail ? 'Sending...' : 'Send Draft'}
+                </Button>
+              )}
+              {task.emailSent && (
+                <Button
+                  disabled
+                  className="h-16 bg-green-500/10 border border-green-500/20 text-green-400 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2"
+                >
+                  <CheckCircle2 size={16}/> Email Sent
+                </Button>
+              )}
+              <Button
+                onClick={async () => {
+                  if (!task) return
+                  try {
+                    const response = await fetch(`/api/tasks/${task._id}/complete`, {
+                      method: 'PATCH',
+                    })
+                    if (response.ok) {
+                      router.push('/tasks')
+                    }
+                  } catch (error) {
+                    console.error('Error completing task:', error)
+                  }
+                }}
+                className="h-16 bg-[#FC90AF] hover:bg-[#f985a6] text-black rounded-2xl font-black uppercase italic text-lg shadow-xl shadow-[#FC90AF]/10"
+              >
                 Complete Task
               </Button>
             </div>

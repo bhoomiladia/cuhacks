@@ -37,3 +37,41 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export async function PATCH(
+  req: Request,
+  props: { params: Promise<{ id: string }> }
+) {
+  const params = await props.params;
+  try {
+    await dbConnect();
+    const user = await getAuthUser();
+
+    if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const task = await Task.findOne({ _id: params.id, userId: user.userId });
+
+    if (!task) {
+      return NextResponse.json({ message: 'Task not found' }, { status: 404 });
+    }
+
+    const body = await req.json();
+    
+    if (body.chatMessages) {
+      task.chatMessages = body.chatMessages;
+    }
+    
+    task.updatedAt = new Date();
+    await task.save();
+
+    return NextResponse.json(task, { status: 200 });
+  } catch (error: any) {
+    console.error('Error updating task:', error);
+    return NextResponse.json(
+      { message: 'Internal Server Error', error: error.message },
+      { status: 500 }
+    );
+  }
+}
