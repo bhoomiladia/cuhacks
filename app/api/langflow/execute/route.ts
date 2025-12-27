@@ -81,8 +81,8 @@ Each response must feel fresh, natural, and independent.`
     // Execute Langflow chat
     const langflowInput = {
       task_id: task._id.toString(),
-      task_title: "User Request", // Static to prevent repetition
-      task_description: "",       // Empty to prevent repetition
+      task_title: task.title,
+      task_description: task.description || "",
       priority: task.priority,
       chat_input: message,
       // Send constructed history including system message

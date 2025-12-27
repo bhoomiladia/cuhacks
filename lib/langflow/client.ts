@@ -1,6 +1,9 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 const LANGFLOW_BASE_URL = process.env.LANGFLOW_URL || 'http://localhost:7860';
 const LANGFLOW_FLOW_ID = process.env.LANGFLOW_FLOW_ID || '463a5ed5-cb21-4a35-a9fe-5c266085a252';
 const LANGFLOW_API_KEY = process.env.LANGFLOW_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export interface LangflowChatInput {
   task_id: string;
@@ -84,12 +87,12 @@ export async function executeLangflowChat(input: LangflowChatInput): Promise<Lan
   } catch (error: any) {
     if (error.message?.includes('fetch failed') || error.message?.includes('ECONNREFUSED') || error.code === 'ECONNREFUSED') {
       console.warn('Cannot connect to Langflow. Using mock response.');
-      return generateMockChatResponse(input);
+      return await generateMockChatResponse(input);
     }
     
     if (error.message?.includes('authentication') || error.message?.includes('API key')) {
       console.warn('Langflow authentication issue. Using mock response.');
-      return generateMockChatResponse(input);
+      return await generateMockChatResponse(input);
     }
     
     console.error('Langflow execution error:', error);
@@ -181,7 +184,73 @@ function extractEmailBody(text: string): string {
   return text;
 }
 
-function generateMockChatResponse(input: LangflowChatInput): LangflowChatResponse {
+async function generateMockChatResponse(input: LangflowChatInput): Promise<LangflowChatResponse> {
+  // Try Gemini
+  if (GEMINI_API_KEY) {
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      
+      const prompt = `You are a professional executive assistant and communication expert.
+Task: ${input.task_title}
+Context: ${input.task_description}
+User Message: ${input.chat_input}
+
+Analyze the user's request.
+If the user wants to send, draft, or write an email:
+1. Extract the recipient, subject, and body.
+2. If the user provides a brief topic (e.g., "about web3", "about the meeting"), GENERATE A COMPREHENSIVE, PROFESSIONAL EMAIL BODY. 
+   - Do NOT just write one sentence.
+   - Include a professional greeting (e.g., "Dear [Name] or [Sir/Madam]").
+   - Write 2-3 detailed paragraphs explaining the topic, its importance, or the context.
+   - Use bullet points if listing items or features.
+   - End with a professional closing (e.g., "Best regards, [Your Name]").
+3. Return a JSON object with this structure:
+{
+  "response": "A polite confirmation message to the user",
+  "email_draft": {
+    "recipient": "email@address.com",
+    "subject": "Clear and Professional Subject Line",
+    "body": "Full, multi-paragraph email body with formatting"
+  },
+  "should_send_email": false
+}
+
+If it is NOT an email request, return a JSON object with:
+{
+  "response": "Your answer to the user"
+}
+
+Do not use markdown code blocks. Return raw JSON only.`;
+
+      const result = await model.generateContent(prompt);
+      let text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      // Also remove any leading/trailing non-JSON characters if possible
+      const firstBrace = text.indexOf('{');
+      const lastBrace = text.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        text = text.substring(firstBrace, lastBrace + 1);
+      }
+
+      try {
+        const json = JSON.parse(text);
+        return {
+          response: json.response,
+          email_draft: json.email_draft,
+          should_send_email: json.should_send_email
+        };
+      } catch (e) {
+        // Fallback if JSON parsing fails
+        return { response: text };
+      }
+    } catch (e) {
+      console.error("Gemini chat error", e);
+      // Fall through to static logic
+    }
+  }
+
   const message = input.chat_input.toLowerCase();
   // We do NOT concatenate title/description into a 'fullContext' for the main routing logic
   // to prevent the task title from constantly triggering the "Task Definition" response.
@@ -199,10 +268,21 @@ function generateMockChatResponse(input: LangflowChatInput): LangflowChatRespons
      
      if (emailMatch) {
         const recipient = emailMatch[0];
-        const subject = input.task_title.length > 50 ? input.task_title.substring(0, 50) : input.task_title;
-        // Use chat input as body if it's a drafting request, otherwise fall back to desc
-        const body = input.chat_input.replace(emailRegex, '').replace(/draft|email|send|to/gi, '').trim() || input.task_description;
+        // Use a better subject line extraction
+        let subject = input.task_title;
+        if (subject.length > 50) subject = subject.substring(0, 50);
         
+        // Clean up body: Remove the email address, and remove command phrases cleanly using word boundaries
+        let body = input.chat_input
+          .replace(emailRegex, '')
+          .replace(/\b(draft|email|send|write|compose|to|about|regarding)\b/gi, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+          
+        if (!body || body.length < 5) {
+           body = input.task_description || "Please see the attached details regarding our discussion.";
+        }
+
         return {
           response: `I have drafted an email to ${recipient} regarding "${subject}". You can review and send it from the dashboard.`,
           email_draft: {

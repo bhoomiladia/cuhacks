@@ -1,7 +1,10 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 // Langflow service for agent execution
 const LANGFLOW_BASE_URL = process.env.LANGFLOW_URL || 'http://localhost:7860';
 const LANGFLOW_FLOW_ID = process.env.LANGFLOW_FLOW_ID || '463a5ed5-cb21-4a35-a9fe-5c266085a252';
 const LANGFLOW_API_KEY = process.env.LANGFLOW_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export interface LangflowTaskInput {
   task_id: string;
@@ -90,13 +93,13 @@ export async function executeLangflowFlow(taskInput: LangflowTaskInput): Promise
     // Handle network errors (Langflow not running) - use mock for demo
     if (error.message?.includes('fetch failed') || error.message?.includes('ECONNREFUSED') || error.code === 'ECONNREFUSED') {
       // console.warn('Cannot connect to Langflow. Using mock response for demo.');
-      return generateMockResponse(taskInput);
+      return await generateMockResponse(taskInput);
     }
     
     // For other errors, try mock as fallback
     if (error.message?.includes('authentication') || error.message?.includes('API key')) {
       // console.warn('Langflow authentication issue. Using mock response for demo.');
-      return generateMockResponse(taskInput);
+      return await generateMockResponse(taskInput);
     }
     
     console.error('Langflow execution error:', error);
@@ -212,7 +215,46 @@ Required skills: ${researchData.skills.join(', ')}.`;
 
 // Generate realistic mock agent response for demo purposes
 // UPDATED: Now follows the new strict rules (No meta-talk, direct answers)
-function generateMockResponse(taskInput: LangflowTaskInput): LangflowResponse {
+async function generateMockResponse(taskInput: LangflowTaskInput): Promise<LangflowResponse> {
+  // Try Gemini first
+  if (GEMINI_API_KEY) {
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      
+      const prompt = `You are an AI assistant helping with a task.
+Task Title: ${taskInput.title}
+Description: ${taskInput.description}
+Priority: ${taskInput.priority}
+
+Please provide a detailed response to this task. 
+If it is a question, answer it directly.
+If it is a request for a draft (email, post), write it.
+If it is a research task, provide the information.
+Do NOT include "Task Understanding" or "Execution Plan" headers. Just give the result.`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      
+      return {
+        outputs: {
+          output_1: {
+            outputs: [{
+              results: {
+                message: {
+                  text: text,
+                },
+              },
+            }],
+          },
+        },
+      };
+    } catch (e) {
+      console.error("Gemini error, falling back to static mock:", e);
+    }
+  }
+
   // 1. Interpreter
   const intent = interpretIntent(taskInput.title, taskInput.description || '');
   

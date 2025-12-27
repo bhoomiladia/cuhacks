@@ -73,6 +73,32 @@ export async function POST(req: Request) {
       fileName = file.name;
     }
 
+    const text = `${title} ${description}`.toLowerCase();
+    
+    // Intent Detection Logic
+    let type = 'NORMAL';
+    let emailIntent = null;
+
+    const sendPhrases = ['send email', 'email to', 'mail to'];
+    const draftPhrases = ['draft email', 'write email'];
+    const readPhrases = ['read email', 'check inbox', 'review emails'];
+
+    // Priority: SEND > DRAFT > READ
+    if (sendPhrases.some(p => text.includes(p))) {
+      type = 'EMAIL_ACTION';
+      emailIntent = 'SEND';
+    } else if (draftPhrases.some(p => text.includes(p))) {
+      type = 'EMAIL_ACTION';
+      emailIntent = 'DRAFT';
+    } else if (readPhrases.some(p => text.includes(p))) {
+      type = 'EMAIL_ACTION';
+      emailIntent = 'READ';
+    } else if (text.includes('email') || text.includes('mail')) {
+      // Ambiguous intent → default to DRAFT
+      type = 'EMAIL_ACTION';
+      emailIntent = 'DRAFT';
+    }
+
     const newTask = await Task.create({
       userId: user.userId,
       title,
@@ -82,6 +108,8 @@ export async function POST(req: Request) {
       fileUrl,
       fileName,
       status: 'pending',
+      type,
+      emailIntent,
     });
 
     return NextResponse.json(newTask, { status: 201 });

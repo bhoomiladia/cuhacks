@@ -38,6 +38,16 @@ const TaskSchema = new mongoose.Schema({
     type: String,
     default: 'Planner',
   },
+  type: {
+    type: String,
+    enum: ['NORMAL', 'EMAIL_ACTION'],
+    default: 'NORMAL',
+  },
+  emailIntent: {
+    type: String,
+    enum: ['READ', 'DRAFT', 'SEND'],
+    default: null,
+  },
   tags: {
     type: [String],
     default: [],
