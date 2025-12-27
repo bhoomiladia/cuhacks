@@ -116,7 +116,7 @@ export default function DashboardPage() {
         <main className="flex-1 p-6 overflow-y-auto no-scrollbar">
         <div className="mb-2">
   <h1 className="text-3xl font-black">
-    Welcome back 👋
+    Welcome back, {dashboardData.user.name !== "Loading..." ? `, ${dashboardData.user.name.split(' ')[0]}` : ""} 👋
   </h1>
   <p className="text-gray-400 text-sm mt-1">
     Your AI agents are ready — give a command to get started.
