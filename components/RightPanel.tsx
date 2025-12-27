@@ -143,8 +143,9 @@ export function RightPanel({
             {/* User Identity Section */}
             <Link href='/profile' className="bg-white/5 p-5 rounded-[2rem] border border-white/5 flex items-center gap-4">
               <Avatar className="w-12 h-12 border-2 border-[#FC90AF]/20">
-                <AvatarImage src={dashboardData.user.avatar} />
-              </Avatar>
+              {/* Make sure this is using dashboardData.user.avatar */}
+              <AvatarImage src={dashboardData.user.avatar || "https://github.com/shadcn.png"} />
+            </Avatar>
                       <div className="flex-1">
           <p className="text-sm font-bold text-white">{dashboardData.user.name}</p>
           {/* Displays your Professional Title */}
@@ -274,8 +275,9 @@ export function RightPanel({
           /* Minimized State Icons */
           <div className="flex flex-col items-center gap-10 mt-10">
              <Avatar className="w-10 h-10 border border-white/10">
-                <AvatarImage src="https://github.com/shadcn.png" />
-             </Avatar>
+      {/* Update this one too! */}
+              <AvatarImage src={dashboardData.user.avatar || "https://github.com/shadcn.png"} />
+          </Avatar>
              <CheckSquare size={20} className="text-gray-700 hover:text-[#FC90AF] transition-colors cursor-pointer" />
              <Mail size={20} className="text-gray-700 hover:text-[#FC90AF] transition-colors cursor-pointer" />
              <Activity size={20} className="text-gray-700 hover:text-[#FC90AF] transition-colors cursor-pointer" />

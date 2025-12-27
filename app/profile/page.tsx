@@ -6,7 +6,7 @@ import { RightPanel } from '@/components/RightPanel';
 import { 
   Mic, Mail, Shield, LogOut, 
   Zap, Bot, Search, MessageSquare, 
-  Globe, Fingerprint, Activity
+  Globe, Fingerprint, Activity, Camera
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -26,12 +26,15 @@ export default function ProfilePage() {
     research: false,
     response: true
   });
+  
+  // Added 'avatar' to the profile state type
   const [profile, setProfile] = useState<{ 
-            name: string; 
-            email: string; 
-            title: string; 
-            uptime: string; 
-          } | null>(null);
+    name: string; 
+    email: string; 
+    title: string; 
+    uptime: string;
+    avatar?: string; 
+  } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -40,36 +43,51 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-  async function fetchProfile() {
-    try {
-      const res = await fetch('/api/profile');
-      if (!res.ok) return;
-      const data = await res.json();
-      setProfile(data);
-    } catch (err) {
-      console.error('Failed to fetch profile');
+    async function fetchProfile() {
+      try {
+        const res = await fetch('/api/profile');
+        if (!res.ok) return;
+        const data = await res.json();
+        setProfile(data);
+      } catch (err) {
+        console.error('Failed to fetch profile');
+      }
     }
-  }
+    fetchProfile();
+  }, []);
 
-  fetchProfile();
-}, []);
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = async () => {
+      const base64String = reader.result;
+      
+      const res = await fetch('/api/profile/upload', {
+        method: 'POST',
+        body: JSON.stringify({ imageUrl: base64String }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Update local state so the image changes immediately
+        setProfile(prev => prev ? { ...prev, avatar: data.avatar } : null);
+      }
+    };
+  };
 
   if (!mounted) return <div className="bg-[#15151b] h-screen w-full" />;
-
-  const formattedTime = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  const formattedDate = time.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
 
   return (
     <div className="flex h-screen w-full bg-[#15151b] text-[#e2e2e7] overflow-hidden font-sans">
       <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
 
       <main className="flex-1 bg-[#1c1c24] rounded-l-[3.5rem] overflow-y-auto overflow-x-hidden p-12 custom-scrollbar relative">
-        
-        {/* Decorative Background */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#FC90AF]/5 blur-[120px] rounded-full -mr-64 -mt-64 pointer-events-none" />
 
-        {/* HEADER SECTION */}
         <header className="mb-12 flex justify-between items-start relative z-10">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -94,36 +112,42 @@ export default function ProfilePage() {
         </header>
 
         <div className="grid grid-cols-12 gap-6 relative z-10">
-          
-          {/* COLUMN 1: IDENTITY */}
           <section className="col-span-12 lg:col-span-4 space-y-6">
             <div className="bg-gradient-to-b from-white/[0.08] to-transparent border border-white/10 p-10 rounded-[3rem] text-center shadow-2xl">
-              <div className="relative w-32 h-32 mx-auto mb-6">
+              
+              {/* --- AVATAR SECTION WITH HOVER --- */}
+              <div className="relative w-32 h-32 mx-auto mb-6 group">
                 <div className="absolute inset-0 rounded-full bg-[#FC90AF] blur-2xl opacity-20 animate-pulse" />
-                <Avatar className="w-32 h-32 border-2 border-white/10 relative z-10">
-                  <AvatarImage src="https://github.com/shadcn.png" />
-                  <AvatarFallback>JT</AvatarFallback>
+                <Avatar className="w-32 h-32 border-2 border-white/10 relative z-10 transition-all group-hover:opacity-40">
+                  <AvatarImage src={profile?.avatar || "https://github.com/shadcn.png"} />
+                  <AvatarFallback>{profile?.name?.charAt(0) || '?'}</AvatarFallback>
                 </Avatar>
+                
+                {/* Camera Overlay */}
+                <label className="absolute inset-0 z-20 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="p-3 bg-[#FC90AF] rounded-full text-[#15151b] shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                    <Camera size={20} />
+                    <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                  </div>
+                </label>
               </div>
+
               <h2 className="text-2xl font-black text-white tracking-tight">
                 {profile?.name || '—'}
               </h2>
-              {/* Replaced 'Lead Architect' with dynamic title */}
               <p className="text-[#FC90AF] text-xs font-bold uppercase tracking-[0.1em] mt-1">
-                {profile?.title || 'Professional'}</p>
+                {profile?.title || 'Professional'}
+              </p>
               
               <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
                 <div className="flex justify-between items-center px-2">
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Email</span>
-                  <span className="text-xs font-medium text-white">
-  {profile?.email || '—'}
-</span>
-
+                  <span className="text-xs font-medium text-white">{profile?.email || '—'}</span>
                 </div>
                 <div className="flex justify-between items-center px-2">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Uptime</span>
-              <span className="text-xs font-medium text-white">{profile?.uptime || '0 Hours'}</span>
-            </div>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Uptime</span>
+                  <span className="text-xs font-medium text-white">{profile?.uptime || '0 Hours'}</span>
+                </div>
               </div>
             </div>
 
@@ -141,10 +165,7 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          {/* COLUMN 2 & 3: BENTO GRID */}
           <section className="col-span-12 lg:col-span-8 space-y-6">
-            
-            {/* Agent Deployment */}
             <div className="bg-white/[0.03] border border-white/10 rounded-[3rem] p-8">
               <div className="flex items-center gap-3 mb-8">
                 <Bot className="text-[#FC90AF]" size={18} />
@@ -172,7 +193,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* CRITICAL ACTIONS (Workspace Link + Purge) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2 bg-blue-500/5 border border-blue-500/10 rounded-[2.5rem] p-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -188,13 +208,17 @@ export default function ProfilePage() {
                 Purge Data
               </Button>
             </div>
-
           </section>
         </div>
 
-        {/* LOGOUT AREA */}
         <div className="mt-16 mb-8 flex justify-center relative z-10">
-           <button className="flex items-center gap-2 text-gray-600 hover:text-white transition-colors group">
+           <button 
+             onClick={async () => {
+               const res = await fetch('/api/auth/logout', { method: 'POST' });
+               if (res.ok) window.location.href = '/login';
+             }}
+             className="flex items-center gap-2 text-gray-600 hover:text-white transition-colors group"
+           >
              <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Terminate Current Session</span>
            </button>
