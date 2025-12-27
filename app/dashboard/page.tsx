@@ -42,6 +42,13 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       try {
         const response = await fetch('/api/dashboard');
+        
+        // If the server says the token is gone (401), kick them out!
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+
         const data = await response.json();
         setDashboardData(data);
       } catch (error) {

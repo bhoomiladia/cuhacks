@@ -43,9 +43,9 @@ export function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) {
       });
 
       if (res.ok) {
-        // Clear local state and redirect to login
-        router.push('/login');
-        router.refresh();
+        // This is the "Nuclear Option" - it forces a full reload
+        // and ensures all tabs/components lose their state.
+        window.location.href = '/login';
       } else {
         console.error('Logout failed on server');
       }
