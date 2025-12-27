@@ -13,6 +13,36 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import {Sidebar} from "@/components/Sidebar"
 import DOMPurify from 'dompurify';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+const Editor = ({ initialContent, onChange }: { initialContent: string, onChange: (html: string) => void }) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  
+  React.useEffect(() => {
+    if (ref.current) {
+        ref.current.innerHTML = initialContent;
+    }
+  }, []); // Only on mount
+
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      className="bg-transparent px-6 py-6 text-sm outline-none h-64 resize-none custom-scrollbar overflow-y-auto"
+      onInput={(e) => onChange(e.currentTarget.innerHTML)}
+    />
+  );
+};
 
 export default function EmailsPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true) // Left Global
@@ -28,7 +58,10 @@ export default function EmailsPage() {
   const [composeTo, setComposeTo] = useState("");
   const [composeSubject, setComposeSubject] = useState("");
   const [composeBody, setComposeBody] = useState("");
+  const [draftId, setDraftId] = useState(0);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     checkConnection();
@@ -95,17 +128,47 @@ export default function EmailsPage() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachments(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSendEmail = async () => {
     if (!composeTo || !composeSubject || !composeBody) return;
     setIsSending(true);
     try {
+        const processedAttachments = await Promise.all(
+            attachments.map(async (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                         const result = reader.result as string;
+                         const base64 = result.split(',')[1];
+                         resolve({
+                             filename: file.name,
+                             content: base64,
+                             contentType: file.type
+                         });
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            })
+        );
+
         const res = await fetch('/api/emails/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 to: composeTo,
                 subject: composeSubject,
-                body: composeBody
+                body: composeBody,
+                attachments: processedAttachments
             })
         });
         if (res.ok) {
@@ -113,6 +176,7 @@ export default function EmailsPage() {
             setComposeTo("");
             setComposeSubject("");
             setComposeBody("");
+            setAttachments([]);
             // Refresh inbox if needed or show success toast
             if (activeTab === 'sent') {
                 fetchEmails('SENT');
@@ -129,6 +193,46 @@ export default function EmailsPage() {
     setSelectedEmail(email)
     setIsMailOpen(true)
   }
+
+  const handleDelete = async () => {
+    if (!selectedEmail) return;
+    try {
+      const res = await fetch(`/api/emails/${selectedEmail.id}/trash`, { method: 'POST' });
+      if (res.ok) {
+        setEmails(prev => prev.filter(e => e.id !== selectedEmail.id));
+        setIsMailOpen(false);
+        setSelectedEmail(null);
+      } else {
+        console.error('Failed to delete email');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReply = () => {
+    if (!selectedEmail) return;
+    // Attempt to extract email from "Name <email>" format if possible, otherwise use full string
+    const sender = selectedEmail.sender || '';
+    setComposeTo(sender);
+    setComposeSubject(selectedEmail.subject.startsWith('Re:') ? selectedEmail.subject : `Re: ${selectedEmail.subject}`);
+    const originalBody = selectedEmail.body || selectedEmail.preview || '';
+    const cleanBody = DOMPurify.sanitize(originalBody);
+    setComposeBody(`<br><br><br>On ${selectedEmail.time}, ${sender} wrote:<br><blockquote>${cleanBody}</blockquote>`);
+    setDraftId(Date.now());
+    setIsComposeOpen(true);
+  };
+
+  const handleForward = () => {
+    if (!selectedEmail) return;
+    setComposeTo('');
+    setComposeSubject(selectedEmail.subject.startsWith('Fwd:') ? selectedEmail.subject : `Fwd: ${selectedEmail.subject}`);
+    const originalBody = selectedEmail.body || selectedEmail.preview || '';
+    const cleanBody = DOMPurify.sanitize(originalBody);
+    setComposeBody(`<br><br><br>---------- Forwarded message ---------<br>From: ${selectedEmail.sender}<br>Date: ${selectedEmail.time}<br>Subject: ${selectedEmail.subject}<br><br>${cleanBody}`);
+    setDraftId(Date.now());
+    setIsComposeOpen(true);
+  };
 
   return (
     <div className="flex h-screen bg-[#15151b] overflow-hidden text-white font-sans selection:bg-[#FC90AF]/30">
@@ -204,7 +308,23 @@ export default function EmailsPage() {
               <header className="px-8 py-5 border-b border-white/5 flex justify-between items-center">
                 <div className="flex gap-2">
                   <Button variant="outline" className="h-9 w-9 p-0 border-white/10 bg-white/5 rounded-lg text-gray-400"><Archive size={16}/></Button>
-                  <Button variant="outline" className="h-9 w-9 p-0 border-white/10 bg-white/5 rounded-lg text-gray-400"><Trash2 size={16}/></Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="h-9 w-9 p-0 border-white/10 bg-white/5 rounded-lg text-gray-400 hover:text-red-400 hover:border-red-500/30 transition-colors"><Trash2 size={16}/></Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-[#23232f] border-white/10 text-white">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Email</AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                          Are you sure you want to delete this email? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white border-none">Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
                 <Button className="h-9 bg-[#a855f7] hover:bg-[#9333ea] text-white rounded-lg text-[10px] font-black uppercase px-4 gap-2">
                    <Sparkles size={14}/> Summarize
@@ -232,8 +352,8 @@ export default function EmailsPage() {
 
               <div className="p-8 border-t border-white/5">
                 <div className="flex gap-3">
-                  <Button className="flex-1 bg-[#FC90AF] text-black rounded-xl h-12 font-black uppercase text-xs tracking-widest">Reply</Button>
-                  <Button variant="outline" className="flex-1 border-white/10 bg-white/5 rounded-xl h-12 font-black uppercase text-xs text-gray-400">Forward</Button>
+                  <Button onClick={handleReply} className="flex-1 bg-[#FC90AF] text-black rounded-xl h-12 font-black uppercase text-xs tracking-widest">Reply</Button>
+                  <Button onClick={handleForward} variant="outline" className="flex-1 border-white/10 bg-white/5 rounded-xl h-12 font-black uppercase text-xs text-gray-400">Forward</Button>
                 </div>
               </div>
             </motion.div>
@@ -294,18 +414,36 @@ export default function EmailsPage() {
                 placeholder="Subject" 
                 className="bg-transparent border-b border-white/5 px-6 py-4 text-xs outline-none" 
               />
-              <textarea 
-                value={composeBody}
-                onChange={(e) => setComposeBody(e.target.value)}
-                placeholder="Write message..." 
-                className="bg-transparent px-6 py-6 text-sm outline-none h-64 resize-none custom-scrollbar"
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 px-6 py-2 border-b border-white/5">
+                    {attachments.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 bg-[#FC90AF]/10 px-3 py-1 rounded-full text-xs text-[#FC90AF]">
+                            <span className="truncate max-w-[150px]">{file.name}</span>
+                            <button onClick={() => removeAttachment(index)} className="hover:text-white"><X size={12}/></button>
+                        </div>
+                    ))}
+                </div>
+              )}
+              <Editor 
+                key={draftId}
+                initialContent={composeBody}
+                onChange={setComposeBody}
               />
             </div>
             <div className="p-6 bg-[#15151b]/50 flex justify-between items-center">
               <Button onClick={handleSendEmail} disabled={isSending} className="bg-[#FC90AF] text-black rounded-xl px-8 font-black uppercase text-[10px]">
                 {isSending ? 'Sending...' : 'Send'}
               </Button>
-              <Paperclip size={18} className="text-gray-600" />
+              <input 
+                  type="file" 
+                  multiple 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  onChange={handleFileChange} 
+              />
+              <button onClick={() => fileInputRef.current?.click()} className="text-gray-600 hover:text-white transition-colors">
+                  <Paperclip size={18} />
+              </button>
             </div>
           </motion.div>
         )}
