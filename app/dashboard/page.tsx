@@ -10,8 +10,52 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useSpeechToText } from "@/hooks/use-speech-to-text"
 import {RightPanel} from "@/components/RightPanel"
 export default function DashboardPage() {
+  const router = useRouter()
+  const { isListening, startListening, stopListening } = useSpeechToText()
+  const [inputValue, setInputValue] = useState("")
+  const [isSending, setIsSending] = useState(false)
+
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening()
+    } else {
+      startListening((text) => {
+        setInputValue((prev) => (prev ? prev + " " + text : text))
+      })
+    }
+  }
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || isSending) return
+
+    setIsSending(true)
+    try {
+      const formData = new FormData()
+      formData.append('title', inputValue)
+      formData.append('description', inputValue)
+      formData.append('status', 'pending')
+      formData.append('source', 'dashboard')
+      // Default priority/dueDate if needed, or leave empty
+
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        router.push(`/tasks/${data._id}`)
+      }
+    } catch (error) {
+      console.error("Error creating task:", error)
+      setIsSending(false)
+    }
+  }
+
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -167,11 +211,25 @@ export default function DashboardPage() {
                     <h1 className="text-3xl font-black mb-4">Command Center</h1>
                     <div className="bg-white/10 backdrop-blur-xl p-2 rounded-2xl flex items-center border border-white/20">
                        <input 
+                         value={inputValue}
+                         onChange={(e) => setInputValue(e.target.value)}
+                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                          placeholder="Create a task to email the team..." 
                          className="bg-transparent border-none outline-none flex-1 px-4 py-2 placeholder:text-white/60 text-white font-medium"
                        />
-                       <button className="p-3 bg-white/20 hover:bg-white/40 rounded-xl transition-all mr-1"><Mic size={18} /></button>
-                       <button className="p-3 bg-white rounded-xl text-[#f985a6] hover:scale-105 transition-all"><Send size={18} /></button>
+                       <button 
+                         onClick={handleMicClick}
+                         className={`p-3 rounded-xl transition-all mr-1 ${isListening ? 'bg-[#FC90AF] text-[#15151b] animate-pulse' : 'bg-white/20 hover:bg-white/40'}`}
+                       >
+                         <Mic size={18} />
+                       </button>
+                       <button 
+                         onClick={handleSend}
+                         disabled={isSending || !inputValue.trim()}
+                         className={`p-3 bg-white rounded-xl text-[#f985a6] transition-all ${isSending || !inputValue.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+                       >
+                         <Send size={18} />
+                       </button>
                     </div>
                   </div>
                </div>

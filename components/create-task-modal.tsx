@@ -12,62 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-
-
-// Type definitions for Web Speech API
-declare class SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onstart: (() => void) | null;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-}
-
-interface SpeechRecognitionEvent {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-
-interface SpeechRecognitionResultList {
-  length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-  isFinal: boolean;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message: string;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: {
-      prototype: SpeechRecognition;
-      new (): SpeechRecognition;
-    };
-    webkitSpeechRecognition: {
-      prototype: SpeechRecognition;
-      new (): SpeechRecognition;
-    };
-  }
-}
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -91,10 +36,9 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
-  const [isListening, setIsListening] = useState(false);
+  const { isListening, startListening, stopListening } = useSpeechToText();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const activeFieldRef = useRef<'title' | 'description' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -175,62 +119,19 @@ export function CreateTaskModal({ isOpen, onClose, onSave }: CreateTaskModalProp
   }, []);
 
   const startRecognition = (field: 'title' | 'description') => {
-    stopRecognition();
-    
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.error('Speech recognition not supported in this browser');
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
-
-    recognition.onstart = () => {
-      activeFieldRef.current = field;
-      setIsListening(true);
-    };
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript;
-      if (activeFieldRef.current === 'title') {
+    activeFieldRef.current = field;
+    startListening((transcript) => {
+      if (field === 'title') {
         setTitle(prev => prev ? `${prev} ${transcript}` : transcript);
-      } else if (activeFieldRef.current === 'description') {
+      } else if (field === 'description') {
         setDescription(prev => prev ? `${prev} ${transcript}` : transcript);
       }
-    };
-
-    recognition.onend = () => {
-      stopRecognition();
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error', event.error);
-      stopRecognition();
-    };
-
-    try {
-      recognition.start();
-      recognitionRef.current = recognition;
-    } catch (error) {
-      console.error('Error starting speech recognition:', error);
-      stopRecognition();
-    }
+    });
   };
 
   const stopRecognition = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (error) {
-        // Ignore errors when stopping already stopped recognition
-      }
-      recognitionRef.current = null;
-    }
+    stopListening();
     activeFieldRef.current = null;
-    setIsListening(false);
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
