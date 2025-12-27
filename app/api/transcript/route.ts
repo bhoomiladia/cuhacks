@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(GEMINI_KEY!);
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const videoId = searchParams.get('videoId');
@@ -9,16 +12,12 @@ export async function GET(request: Request) {
 
   const RAPID_API_KEY = process.env.RAPID_API_KEY; 
   const TRANSCRIBE_KEY = process.env.TRANSCRIBE_API_KEY;
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
   try {
-    // 1. Fetch Metadata (RapidAPI)
+    // 1. Fetch Metadata
     const metaRes = await fetch(`https://youtube138.p.rapidapi.com/video/details/?id=${videoId}&hl=en&gl=US`, {
-      headers: { 'x-rapidapi-key': RAPID_API_KEY!, 'x-rapidapi-host': 'youtube138.p.rapidapi.com' },
-      next: { revalidate: 3600 } // Cache results for 1 hour
+      headers: { 'x-rapidapi-key': RAPID_API_KEY!, 'x-rapidapi-host': 'youtube138.p.rapidapi.com' }
     });
-    
-    if (!metaRes.ok) throw new Error(`RapidAPI Error: ${metaRes.status}`);
     const metaData = await metaRes.json();
 
     // 2. Fetch Transcript
@@ -28,36 +27,51 @@ export async function GET(request: Request) {
       body: JSON.stringify({ ids: [videoId] })
     });
 
-    if (!transcriptRes.ok) throw new Error(`Transcript API Error: ${transcriptRes.status}`);
     const transcriptData = await transcriptRes.json();
-    
-    // Check if transcript actually exists in the response
-    const fullText = transcriptData[0]?.text;
+    let fullText = transcriptData[0]?.text || "";
+
     if (!fullText) {
       return NextResponse.json({ 
-        title: metaData.title, 
-        thumbnails: metaData.thumbnails, 
-        content: "⚠️ Sorry, transcript not available for this video. Gemini cannot summarize without text." 
+        title: metaData.title || "Unknown Video", 
+        displayThumb: metaData.thumbnails?.[0]?.url,
+        content: "⚠️ Transcript not available for this video." 
       });
     }
 
-    // 3. Gemini Generation
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY!);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // --- THE "TIME THING" FIX ---
+    // Remove timestamps like [00:00:10] or 0:10 using RegEx to save tokens and prevent errors
+    const cleanText = fullText
+        .replace(/\[\d+:\d+:\d+\]/g, '') 
+        .replace(/\d+:\d+/g, '')
+        .substring(0, 12000); // Truncate to avoid 500 errors on massive transcripts
 
-    const prompt = `Video Title: ${metaData.title}\nTranscript: ${fullText}\n\nInstructions: Provide an educational quiz if tutorial, a recipe if cooking, or a standard summary with takeaways.`;
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const prompt = `Video Title: ${metaData.title}\n\nTranscript Content: ${cleanText}\n\nTask: Summarize this video. If it is a tutorial, provide a quiz. If cooking, provide a recipe. Otherwise, provide 5 key takeaways.`;
 
     const result = await model.generateContent(prompt);
-    const aiOutput = result.response.text();
-
+    
     return NextResponse.json({
+      videoId,
       title: metaData.title,
-      thumbnails: metaData.thumbnails,
-      content: aiOutput
+      displayThumb: metaData.thumbnails?.pop()?.url || metaData.thumbnails?.[0]?.url,
+      content: result.response.text(),
+      rawTranscript: cleanText 
     });
 
   } catch (error: any) {
-    console.error("❌ API Route Error:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to process" }, { status: 500 });
+    console.error("Route Error:", error);
+    return NextResponse.json({ error: "Neural processing failed. The transcript might be too long or unavailable." }, { status: 500 });
   }
+}
+
+export async function POST(request: Request) {
+    try {
+        const { transcript, question } = await request.json();
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const prompt = `Transcript: ${transcript}\n\nQuestion: ${question}\n\nAnswer the question concisely using the transcript above.`;
+        const result = await model.generateContent(prompt);
+        return NextResponse.json({ answer: result.response.text() });
+    } catch (error: any) {
+        return NextResponse.json({ error: "Follow-up failed" }, { status: 500 });
+    }
 }
