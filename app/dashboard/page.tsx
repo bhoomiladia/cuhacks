@@ -1,5 +1,6 @@
 "use client"
 
+import { Sidebar } from "@/components/Sidebar";
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -108,69 +109,7 @@ export default function DashboardPage() {
       <div className="flex-1 flex bg-[#23232f] rounded-r-[3rem] z-10 shadow-2xl overflow-hidden relative">
         
         {/* Navigation Sidebar */}
-        <nav
-  className={`h-full flex flex-col py-8 gap-8 border-r border-white/5 bg-[#23232f] transition-all duration-300 ${
-    isSidebarOpen ? "w-56 px-4" : "w-20 items-center"
-  }`}
->
-  {/* Logo + Toggle */}
-  <div className="flex items-center justify-between">
-  {isSidebarOpen && (<button 
-      className="text-4xl font-bold tracking-tighter text-white uppercase imbue-bold hover:opacity-70 p-2 transition-opacity cursor-pointer"
-    >
-      KAIRO
-    </button>)
-}  
-  {!isSidebarOpen && (<button 
-      className="text-4xl font-bold tracking-tighter text-white uppercase imbue-bold hover:opacity-70 p-2 transition-opacity cursor-pointer"
-    >
-      K
-    </button>)
-}  
-  {isSidebarOpen && (
-      <ChevronLeft
-        size={18}
-        className="text-gray-400 cursor-pointer"
-        onClick={() => setIsSidebarOpen(false)}
-      />
-    )}
-    {!isSidebarOpen && (
-      <ChevronRight
-        size={18}
-        className="text-gray-400 cursor-pointer"
-        onClick={() => setIsSidebarOpen(true)}
-      />
-    )}
-  </div>
-
-  <div className="flex flex-col gap-3 mt-6">
-  {navItems.map(({ icon: Icon, label, href }) => (
-    <Link
-      key={label}
-      href={href}
-      className="flex items-center gap-3 px-3 py-2 rounded-xl 
-                 hover:bg-white/5 cursor-pointer transition"
-    >
-      <Icon size={18} />
-      {isSidebarOpen && (
-        <span className="text-sm text-gray-300">{label}</span>
-      )}
-    </Link>
-  ))}
-</div>
-
-  {/* Bottom */}
-  <div className="mt-auto flex flex-col gap-4">
-    <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer">
-      <Settings size={18} />
-      {isSidebarOpen && <span className="text-sm">Settings</span>}
-    </div>
-    <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer text-red-400">
-      <LogOut size={18} />
-      {isSidebarOpen && <span className="text-sm">Logout</span>}
-    </div>
-  </div>
-</nav>
+        <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
 
 
         {/* Main Content Area */}
