@@ -16,11 +16,9 @@ export default function ProfilePage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const [activeLang, setActiveLang] = useState('EN');
   const [time, setTime] = useState(new Date());
 
   // --- COMPONENT STATES ---
-  const [vocalFeedback, setVocalFeedback] = useState(true);
   const [neuralLink, setNeuralLink] = useState(true);
   const [agents, setAgents] = useState({
     email: true,
@@ -28,7 +26,12 @@ export default function ProfilePage() {
     research: false,
     response: true
   });
-  const [profile, setProfile] = useState<{ name: string; email: string } | null>(null);
+  const [profile, setProfile] = useState<{ 
+            name: string; 
+            email: string; 
+            title: string; 
+            uptime: string; 
+          } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -103,10 +106,11 @@ export default function ProfilePage() {
                 </Avatar>
               </div>
               <h2 className="text-2xl font-black text-white tracking-tight">
-  {profile?.name || '—'}
-</h2>
-
-              <p className="text-gray-500 text-xs font-bold uppercase tracking-[0.1em] mt-1">Lead Architect</p>
+                {profile?.name || '—'}
+              </h2>
+              {/* Replaced 'Lead Architect' with dynamic title */}
+              <p className="text-[#FC90AF] text-xs font-bold uppercase tracking-[0.1em] mt-1">
+                {profile?.title || 'Professional'}</p>
               
               <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
                 <div className="flex justify-between items-center px-2">
@@ -117,9 +121,9 @@ export default function ProfilePage() {
 
                 </div>
                 <div className="flex justify-between items-center px-2">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Uptime</span>
-                  <span className="text-xs font-medium text-white">412 Hours</span>
-                </div>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Uptime</span>
+              <span className="text-xs font-medium text-white">{profile?.uptime || '0 Hours'}</span>
+            </div>
               </div>
             </div>
 
@@ -165,50 +169,6 @@ export default function ProfilePage() {
                     />
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Language & Voice Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white/[0.03] border border-white/10 rounded-[3rem] p-8 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-6">
-                    <Globe className="text-[#FC90AF]" size={18} />
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">System Dialect</h3>
-                  </div>
-                  <div className="flex bg-[#15151b] p-1.5 rounded-2xl border border-white/10 w-fit">
-                    {['EN', 'FR', 'JP'].map((lang) => (
-                      <button 
-                        key={lang}
-                        onClick={() => setActiveLang(lang)}
-                        className={`px-5 py-2 rounded-xl text-[10px] font-black transition-all ${
-                          activeLang === lang ? 'bg-[#FC90AF] text-[#15151b]' : 'text-gray-500 hover:text-white'
-                        }`}
-                      >
-                        {lang}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="mt-8 flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-400">Vocal Feedback</span>
-                  <CustomToggle checked={vocalFeedback} onChange={setVocalFeedback} />
-                </div>
-              </div>
-
-              <div className="bg-white/[0.03] border border-white/10 rounded-[3rem] p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <Mic className="text-[#FC90AF]" size={18} />
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">Voice Core</h3>
-                </div>
-                <div className="space-y-3">
-                  {['Neural Alpha (Male)', 'Neural Beta (Female)'].map((voice, idx) => (
-                    <div key={voice} className={`p-4 rounded-2xl flex items-center justify-between border transition-all cursor-pointer ${idx === 0 ? 'bg-[#FC90AF]/5 border-[#FC90AF]/20' : 'bg-white/[0.02] border-transparent hover:border-white/10'}`}>
-                      <span className={`text-[11px] font-bold ${idx === 0 ? 'text-[#FC90AF]' : 'text-gray-400'}`}>{voice}</span>
-                      <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? 'bg-[#FC90AF]' : 'bg-gray-600'}`} />
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
 
