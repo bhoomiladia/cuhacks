@@ -42,7 +42,7 @@ export async function GET() {
             name: user.name,
             title: user.title || "Professional",
             bio: user.bio || "",
-            avatar: "https://github.com/shadcn.png"
+            avatar: user.avatar || "https://github.com/shadcn.png"
           };
           activeTaskTitles = tasks.map(task => task.title);
         }

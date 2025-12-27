@@ -68,6 +68,10 @@ const UserSchema = new mongoose.Schema({
     maxlength: [160, 'Bio cannot be more than 160 characters'],
     default: "",
   },
+  avatar: {
+  type: String,
+  default: "https://github.com/shadcn.png" // Default placeholder
+},
 });
 
 export default mongoose.models.User || mongoose.model('User', UserSchema);
