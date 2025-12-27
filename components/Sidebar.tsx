@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link'; // Import Link from Next.js
-import { usePathname } from 'next/navigation'; // Optional: for active state styling
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation'; 
 import { 
   Home, 
   CheckCircle2, 
@@ -24,18 +24,35 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) {
-  const pathname = usePathname(); // Hook to get current route
+  const pathname = usePathname();
+  const router = useRouter();
 
   const navItems = [
     { icon: Home, label: "Dashboard", href: "/dashboard" },
     { icon: CheckCircle2, label: "Tasks", href: "/tasks" },
     { icon: FileText, label: "Notes", href: "/notes" },
     { icon: Mail, label: "Emails", href: "/emails" },
-    // { icon: Activity, label: "Activity Log", href: "/activity" },
-    // { icon: PieChart, label: "Analytics", href: "/analytics" },
     { icon: Users, label: "Integrations", href: "/integrations" },
     { icon: HelpCircle, label: "Help / How it works", href: "/help" },
   ];
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+
+      if (res.ok) {
+        // Clear local state and redirect to login
+        router.push('/login');
+        router.refresh();
+      } else {
+        console.error('Logout failed on server');
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  };
 
   return (
     <nav
@@ -104,14 +121,14 @@ export function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) {
           {isSidebarOpen && <span className="text-sm text-gray-300">Settings</span>}
         </Link>
         
-        {/* Logout usually triggers a function, but Link added as requested */}
-        <Link 
-          href="/logout"
-          className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer text-red-400 group transition-all"
+        {/* Logout Button */}
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer text-red-400 group transition-all w-full text-left"
         >
           <LogOut size={18} />
           {isSidebarOpen && <span className="text-sm">Logout</span>}
-        </Link>
+        </button>
       </div>
     </nav>
   );
