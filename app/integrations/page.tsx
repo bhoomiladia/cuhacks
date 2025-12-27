@@ -204,9 +204,11 @@ export default function AgentsPage() {
                      </div>
                    </div>
                    <div className="flex justify-end gap-2">
-                      {agent.capabilities.slice(0, 2).map(c => (
-                        <span key={c} className="text-[8px] font-black uppercase tracking-tighter px-3 py-1 bg-white/5 border border-white/5 rounded-full text-gray-500">{c}</span>
-                      ))}
+                     {agent.capabilities.slice(0, 2).map((c: string) => (
+  <span key={c} className="text-[8px] font-black uppercase tracking-tighter px-3 py-1 bg-white/5 border border-white/5 rounded-full text-gray-500">
+    {c}
+  </span>
+))}
                    </div>
                 </div>
               </motion.div>

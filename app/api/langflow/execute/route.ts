@@ -101,29 +101,23 @@ Each response must feel fresh, natural, and independent.`
       .reverse()
       .find((m: any) => m.role === 'assistant');
 
-    if (lastAssistantMessage && lastAssistantMessage.content) {
-       const prev = lastAssistantMessage.content.toLowerCase();
-       const curr = finalResponse.toLowerCase();
-       
-       // Simple Jaccard Similarity on words
-       const prevWords = new Set(prev.split(/\s+/));
-       const currWords = new Set(curr.split(/\s+/));
-       const intersection = new Set([...prevWords].filter(x => currWords.has(x)));
-       const union = new Set([...prevWords, ...currWords]);
-       const similarity = intersection.size / union.size;
-       
-       if (similarity > 0.7) {
-          // If response is too similar, we can't easily "regenerate" via API without cost/latency.
-          // Instead, we append a timestamp or variation, OR we could try a mock fallback if it's a known loop.
-          // For now, let's trust the system message, but if it fails, we modify the response to be safe.
-          // Ideally, we would re-query with "Give a DIFFERENT answer", but let's just log it and maybe append a fresh tip.
-          console.warn('High similarity detected in response. User might see repetition.');
-          // We do NOT block it or say "I already provided...". We let it through but maybe we could have re-prompted.
-          // Since the user asked to "Regenerate", we will simulate a retry by appending a instruction? 
-          // No, we can't modify the prompt AFTER response. 
-          // We will just return it. The strict system message should prevent this.
-       }
+  if (lastAssistantMessage && lastAssistantMessage.content) {
+    // 1. DEFINIR las variables que TypeScript no encuentra
+    const prev: string = lastAssistantMessage.content.toLowerCase();
+    const curr: string = finalResponse.toLowerCase();
+
+    // 2. Usar los Sets con tipos explícitos para evitar el error anterior
+    const prevWords = new Set<string>(prev.split(/\s+/));
+    const currWords = new Set<string>(curr.split(/\s+/));
+
+    const intersection = new Set([...prevWords].filter((x: string) => currWords.has(x)));
+    const union = new Set<string>([...prevWords, ...currWords]);
+    const similarity = intersection.size / union.size;
+
+    if (similarity > 0.7) {
+        console.warn('High similarity detected in response. User might see repetition.');
     }
+}
 
     // Save assistant response to chat and as assistant_response
     const assistantMessage = {

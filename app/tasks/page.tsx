@@ -231,14 +231,17 @@ export default function TasksPage() {
                         }}
                       >
                         <GlassSurface
-                          width="100%"
-                          height="100%"
-                          baseColor="rgba(255, 255, 255, 0.05)"
-                          highlightColor="rgba(255, 255, 255, 0.1)"
-                          shadowColor="rgba(0, 0, 0, 0.2)"
-                          borderOpacity={0.1}
-                          blur={10}
-                        />
+  width="100%"
+  height="100%"
+  blur={10} // Esta sí existe en tu interfaz
+  backgroundOpacity={0.05} // Reemplaza a baseColor si solo quieres la opacidad
+  style={{
+    // Pasamos los colores mediante el objeto style que sí permite tu interfaz
+    backgroundColor: "rgba(255, 255, 255, 0.05)", 
+    border: "1px solid rgba(255, 255, 255, 0.1)", // Esto cubre highlightColor y borderOpacity
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.2)",   // Esto cubre shadowColor
+  } as React.CSSProperties}
+/>
                         <div className="absolute inset-0 bg-[#FC90AF]/10 mix-blend-overlay" />
                       </motion.div>
                     )}

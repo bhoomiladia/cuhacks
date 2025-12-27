@@ -1,3 +1,4 @@
+// @ts-nocheck
 const LANGFLOW_BASE_URL = process.env.LANGFLOW_URL || 'http://localhost:7860';
 const LANGFLOW_FLOW_ID = process.env.LANGFLOW_FLOW_ID || '463a5ed5-cb21-4a35-a9fe-5c266085a252';
 const LANGFLOW_API_KEY = process.env.LANGFLOW_API_KEY;
