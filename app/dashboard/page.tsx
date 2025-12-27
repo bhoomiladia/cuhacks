@@ -145,7 +145,7 @@ export default function DashboardPage() {
                  />
                </div>
 
-               <div className="bg-gradient-to-r from-[#fda4bc] to-[#f985a6] rounded-[2.5rem] p-8 relative overflow-hidden">
+               <div className="bg-gradient-to-r to-[#f985a6] from-[#a78bfa] rounded-[2.5rem] p-8 relative overflow-hidden">
                   <div className="max-w-md z-10 relative">
                     <h1 className="text-3xl font-black mb-4">Command Center</h1>
                     <div className="bg-white/10 backdrop-blur-xl p-2 rounded-2xl flex items-center border border-white/20">
