@@ -21,7 +21,8 @@ export async function GET() {
     await dbConnect();
 
     // Added 'title' and 'createdAt' to the select query
-    const user = await User.findById(decoded.userId).select('name email title createdAt');
+    // Add 'avatar' to the select string
+const user = await User.findById(decoded.userId).select('name email title createdAt avatar');
 
     if (!user) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
