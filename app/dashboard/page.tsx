@@ -1,5 +1,6 @@
 "use client"
 
+import { Sidebar } from "@/components/Sidebar";
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -10,8 +11,52 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useSpeechToText } from "@/hooks/use-speech-to-text"
 import {RightPanel} from "@/components/RightPanel"
 export default function DashboardPage() {
+  const router = useRouter()
+  const { isListening, startListening, stopListening } = useSpeechToText()
+  const [inputValue, setInputValue] = useState("")
+  const [isSending, setIsSending] = useState(false)
+
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening()
+    } else {
+      startListening((text) => {
+        setInputValue((prev) => (prev ? prev + " " + text : text))
+      })
+    }
+  }
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || isSending) return
+
+    setIsSending(true)
+    try {
+      const formData = new FormData()
+      formData.append('title', inputValue)
+      formData.append('description', inputValue)
+      formData.append('status', 'pending')
+      formData.append('source', 'dashboard')
+      // Default priority/dueDate if needed, or leave empty
+
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        router.push(`/tasks/${data._id}`)
+      }
+    } catch (error) {
+      console.error("Error creating task:", error)
+      setIsSending(false)
+    }
+  }
+
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -42,6 +87,13 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       try {
         const response = await fetch('/api/dashboard');
+        
+        // If the server says the token is gone (401), kick them out!
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+
         const data = await response.json();
         setDashboardData(data);
       } catch (error) {
@@ -57,76 +109,14 @@ export default function DashboardPage() {
       <div className="flex-1 flex bg-[#23232f] rounded-r-[3rem] z-10 shadow-2xl overflow-hidden relative">
         
         {/* Navigation Sidebar */}
-        <nav
-  className={`h-full flex flex-col py-8 gap-8 border-r border-white/5 bg-[#23232f] transition-all duration-300 ${
-    isSidebarOpen ? "w-56 px-4" : "w-20 items-center"
-  }`}
->
-  {/* Logo + Toggle */}
-  <div className="flex items-center justify-between">
-  {isSidebarOpen && (<button 
-      className="text-4xl font-bold tracking-tighter text-white uppercase imbue-bold hover:opacity-70 p-2 transition-opacity cursor-pointer"
-    >
-      KAIRO
-    </button>)
-}  
-  {!isSidebarOpen && (<button 
-      className="text-4xl font-bold tracking-tighter text-white uppercase imbue-bold hover:opacity-70 p-2 transition-opacity cursor-pointer"
-    >
-      K
-    </button>)
-}  
-  {isSidebarOpen && (
-      <ChevronLeft
-        size={18}
-        className="text-gray-400 cursor-pointer"
-        onClick={() => setIsSidebarOpen(false)}
-      />
-    )}
-    {!isSidebarOpen && (
-      <ChevronRight
-        size={18}
-        className="text-gray-400 cursor-pointer"
-        onClick={() => setIsSidebarOpen(true)}
-      />
-    )}
-  </div>
-
-  <div className="flex flex-col gap-3 mt-6">
-  {navItems.map(({ icon: Icon, label, href }) => (
-    <Link
-      key={label}
-      href={href}
-      className="flex items-center gap-3 px-3 py-2 rounded-xl 
-                 hover:bg-white/5 cursor-pointer transition"
-    >
-      <Icon size={18} />
-      {isSidebarOpen && (
-        <span className="text-sm text-gray-300">{label}</span>
-      )}
-    </Link>
-  ))}
-</div>
-
-  {/* Bottom */}
-  <div className="mt-auto flex flex-col gap-4">
-    <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer">
-      <Settings size={18} />
-      {isSidebarOpen && <span className="text-sm">Settings</span>}
-    </div>
-    <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer text-red-400">
-      <LogOut size={18} />
-      {isSidebarOpen && <span className="text-sm">Logout</span>}
-    </div>
-  </div>
-</nav>
+        <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
 
 
         {/* Main Content Area */}
         <main className="flex-1 p-6 overflow-y-auto no-scrollbar">
         <div className="mb-2">
   <h1 className="text-3xl font-black">
-    Welcome back 👋
+    Welcome back{dashboardData.user.name !== "Loading..." ? `, ${dashboardData.user.name.split(' ')[0]}` : ""} 👋
   </h1>
   <p className="text-gray-400 text-sm mt-1">
     Your AI agents are ready — give a command to get started.
@@ -155,16 +145,30 @@ export default function DashboardPage() {
                  />
                </div>
 
-               <div className="bg-gradient-to-r from-[#fda4bc] to-[#f985a6] rounded-[2.5rem] p-8 relative overflow-hidden">
+               <div className="bg-gradient-to-r to-[#f985a6] from-[#a78bfa] rounded-[2.5rem] p-8 relative overflow-hidden">
                   <div className="max-w-md z-10 relative">
                     <h1 className="text-3xl font-black mb-4">Command Center</h1>
                     <div className="bg-white/10 backdrop-blur-xl p-2 rounded-2xl flex items-center border border-white/20">
                        <input 
+                         value={inputValue}
+                         onChange={(e) => setInputValue(e.target.value)}
+                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                          placeholder="Create a task to email the team..." 
                          className="bg-transparent border-none outline-none flex-1 px-4 py-2 placeholder:text-white/60 text-white font-medium"
                        />
-                       <button className="p-3 bg-white/20 hover:bg-white/40 rounded-xl transition-all mr-1"><Mic size={18} /></button>
-                       <button className="p-3 bg-white rounded-xl text-[#f985a6] hover:scale-105 transition-all"><Send size={18} /></button>
+                       <button 
+                         onClick={handleMicClick}
+                         className={`p-3 rounded-xl transition-all mr-1 ${isListening ? 'bg-[#FC90AF] text-[#15151b] animate-pulse' : 'bg-white/20 hover:bg-white/40'}`}
+                       >
+                         <Mic size={18} />
+                       </button>
+                       <button 
+                         onClick={handleSend}
+                         disabled={isSending || !inputValue.trim()}
+                         className={`p-3 bg-white rounded-xl text-[#f985a6] transition-all ${isSending || !inputValue.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+                       >
+                         <Send size={18} />
+                       </button>
                     </div>
                   </div>
                </div>

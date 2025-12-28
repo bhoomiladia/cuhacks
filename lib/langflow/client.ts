@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const LANGFLOW_BASE_URL = process.env.LANGFLOW_URL || 'http://localhost:7860';

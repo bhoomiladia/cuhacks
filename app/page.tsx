@@ -21,7 +21,10 @@ const DEFAULT_PROPS = {
 export default function DemoOne() {
   const [isStarted, setIsStarted] = useState(false);
   const [showWebsite, setShowWebsite] = useState(false);
-
+  // Calculate motion offset based on screen width
+const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+const offsetA = isMobile ? -80 : -250; 
+const offsetI = isMobile ? 80 : 250;
   const handleStart = () => {
     setIsStarted(true);
     setTimeout(() => {

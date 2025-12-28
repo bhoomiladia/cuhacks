@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    const { to, subject, body } = await req.json();
+    const { to, subject, body, attachments } = await req.json();
 
     if (!to || !subject || !body) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
@@ -55,15 +55,47 @@ export async function POST(req: Request) {
 
     // Construct the email
     const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
-    const messageParts = [
-      `To: ${to}`,
-      'Content-Type: text/html; charset=utf-8',
-      'MIME-Version: 1.0',
-      `Subject: ${utf8Subject}`,
-      '',
-      body
-    ];
-    const message = messageParts.join('\n');
+    let message = '';
+
+    if (!attachments || attachments.length === 0) {
+        const messageParts = [
+          `To: ${to}`,
+          'Content-Type: text/html; charset=utf-8',
+          'MIME-Version: 1.0',
+          `Subject: ${utf8Subject}`,
+          '',
+          body
+        ];
+        message = messageParts.join('\n');
+    } else {
+        const boundary = `boundary_${Date.now().toString(16)}`;
+        const messageParts = [
+            `To: ${to}`,
+            `Subject: ${utf8Subject}`,
+            'MIME-Version: 1.0',
+            `Content-Type: multipart/mixed; boundary="${boundary}"`,
+            '',
+            `--${boundary}`,
+            'Content-Type: text/html; charset=utf-8',
+            'Content-Transfer-Encoding: 7bit',
+            '',
+            body,
+            ''
+        ];
+
+        for (const attachment of attachments) {
+            messageParts.push(`--${boundary}`);
+            messageParts.push(`Content-Type: ${attachment.contentType}; name="${attachment.filename}"`);
+            messageParts.push(`Content-Disposition: attachment; filename="${attachment.filename}"`);
+            messageParts.push('Content-Transfer-Encoding: base64');
+            messageParts.push('');
+            messageParts.push(attachment.content); // Already base64 from frontend
+            messageParts.push('');
+        }
+
+        messageParts.push(`--${boundary}--`);
+        message = messageParts.join('\n');
+    }
 
     // The body needs to be base64url encoded.
     const encodedMessage = Buffer.from(message)

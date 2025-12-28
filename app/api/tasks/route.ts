@@ -49,6 +49,7 @@ export async function POST(req: Request) {
     const priority = formData.get('priority') as string;
     const dueDate = formData.get('dueDate') as string;
     const file = formData.get('file') as File | null;
+    const source = formData.get('source') as string || 'web';
 
     let fileUrl = '';
     let fileName = '';
@@ -110,6 +111,7 @@ export async function POST(req: Request) {
       status: 'pending',
       type,
       emailIntent,
+      source,
     });
 
     return NextResponse.json(newTask, { status: 201 });

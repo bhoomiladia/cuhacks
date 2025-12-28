@@ -128,7 +128,7 @@ The most common stack for internships is React + Next.js + Tailwind CSS + TypeSc
     if (context?.executionResult) {
       return `Based on the task execution, here's what I found:\n\n${context.executionResult}`;
     }
-    return `Regarding "${task.title}": ${task.description || 'Here's what you need to know about this topic.'}`;
+    return `Regarding "${task.title}": ${task.description || 'Here is what you need to know about this topic.'}`;
   }
 
   if (lowerMessage.includes('how') || lowerMessage.includes('steps')) {
@@ -195,6 +195,6 @@ The most common stack for internships is React + Next.js + Tailwind CSS + TypeSc
   }
   
   // Provide a direct, helpful answer without asking questions
-  return `Here's the answer to your question: ${question}. ${context ? `Based on the context: ${context}` : 'Here's the information you requested.'}`;
+  return `Here's the answer to your question: ${question}. ${context ? `Based on the context: ${context}` : 'Here is the information you requested.'}`;
 }
 

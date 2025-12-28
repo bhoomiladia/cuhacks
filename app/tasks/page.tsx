@@ -1,5 +1,6 @@
 "use client"
 
+import { Sidebar } from "@/components/Sidebar"; // Add this line
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
@@ -55,6 +56,10 @@ export default function TasksPage() {
     try {
       setIsLoading(true);
       const response = await fetch('/api/tasks');
+      if (response.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
       if (response.ok) {
         const data = await response.json();
         setTaskList(data);
@@ -126,76 +131,13 @@ export default function TasksPage() {
   const displayedTasks = getTasksByStatus(activeTab);
 
   return (
-    <div className="flex h-screen bg-[#15151b] overflow-hidden text-white font-sans selection:bg-[#FC90AF]/30">
-      
-      {/* LEFT SECTION (Sidebar + Main Content) */}
-      <div className="flex-1 flex bg-[#23232f] rounded-r-[3rem] z-10 shadow-2xl overflow-hidden relative">
+      <div className="flex h-screen bg-[#15151b] overflow-hidden text-white font-sans selection:bg-[#FC90AF]/30">
         
-        {/* Navigation Sidebar */}
-        <nav
-          className={`h-full flex flex-col py-8 gap-8 border-r border-white/5 bg-[#23232f] transition-all duration-300 ${
-            isSidebarOpen ? "w-56 px-4" : "w-20 items-center"
-          }`}
-        >
-          {/* Logo + Toggle */}
-          <div className="flex items-center justify-between">
-            {isSidebarOpen ? (
-              <button className="text-4xl font-bold tracking-tighter text-white uppercase imbue-bold hover:opacity-70 p-2 transition-opacity cursor-pointer">
-                KAIRO
-              </button>
-            ) : (
-              <button className="text-4xl font-bold tracking-tighter text-white uppercase imbue-bold hover:opacity-70 p-2 transition-opacity cursor-pointer">
-                K
-              </button>
-            )}  
-            {isSidebarOpen ? (
-              <ChevronLeft
-                size={18}
-                className="text-gray-400 cursor-pointer"
-                onClick={() => setIsSidebarOpen(false)}
-              />
-            ) : (
-              <ChevronRight
-                size={18}
-                className="text-gray-400 cursor-pointer"
-                onClick={() => setIsSidebarOpen(true)}
-              />
-            )}
-          </div>
-
-          {/* Navigation */}
-          <div className="flex flex-col gap-3 mt-6">
-            {[
-              { icon: Home, label: "Dashboard" },
-              { icon: CheckCircle2, label: "Tasks" },
-              { icon: Mail, label: "Emails" },
-              { icon: Users, label: "Integrations" },
-              { icon: HelpCircle, label: "Help / How it works" },
-            ].map(({ icon: Icon, label }) => (
-              <div
-                key={label}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer"
-              >
-                <Icon size={18} />
-                {isSidebarOpen && (
-                  <span className="text-sm text-gray-300">{label}</span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Bottom */}
-          <div className="mt-auto flex flex-col gap-4">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer">
-              <Settings size={18} />
-              {isSidebarOpen && <span className="text-sm">Settings</span>}
-            </div>
-            <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 cursor-pointer text-red-400">
-              <LogOut size={18} />
-              {isSidebarOpen && <span className="text-sm">Logout</span>}
-            </div>
-          </div>
-        </nav>
+        {/* LEFT SECTION (Sidebar + Main Content) */}
+        <div className="flex-1 flex bg-[#23232f] rounded-r-[3rem] z-10 shadow-2xl overflow-hidden relative">
+          
+          {/* Navigation Sidebar */}
+          <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
 
         {/* Main Tasks Area */}
         <main className="flex-1 p-8 pr-6 overflow-y-auto custom-scrollbar selection:bg-[#FC90AF]/30 ">
@@ -289,14 +231,17 @@ export default function TasksPage() {
                         }}
                       >
                         <GlassSurface
-                          width="100%"
-                          height="100%"
-                          baseColor="rgba(255, 255, 255, 0.05)"
-                          highlightColor="rgba(255, 255, 255, 0.1)"
-                          shadowColor="rgba(0, 0, 0, 0.2)"
-                          borderOpacity={0.1}
-                          blur={10}
-                        />
+  width="100%"
+  height="100%"
+  blur={10} // Esta sí existe en tu interfaz
+  backgroundOpacity={0.05} // Reemplaza a baseColor si solo quieres la opacidad
+  style={{
+    // Pasamos los colores mediante el objeto style que sí permite tu interfaz
+    backgroundColor: "rgba(255, 255, 255, 0.05)", 
+    border: "1px solid rgba(255, 255, 255, 0.1)", // Esto cubre highlightColor y borderOpacity
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.2)",   // Esto cubre shadowColor
+  } as React.CSSProperties}
+/>
                         <div className="absolute inset-0 bg-[#FC90AF]/10 mix-blend-overlay" />
                       </motion.div>
                     )}

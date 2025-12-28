@@ -27,7 +27,7 @@ export async function GET() {
       if (decoded && decoded.userId) {
         // Fetch name, title, bio AND createdAt for uptime calculation
         const [user, tasks] = await Promise.all([
-          User.findById(decoded.userId).select('name title bio createdAt'),
+          User.findById(decoded.userId).select('name title bio createdAt avatar'),
           Task.find({ userId: decoded.userId }).limit(5)
         ]);
 
@@ -42,7 +42,7 @@ export async function GET() {
             name: user.name,
             title: user.title || "Professional",
             bio: user.bio || "",
-            avatar: "https://github.com/shadcn.png"
+            avatar: user.avatar || "https://github.com/shadcn.png"
           };
           activeTaskTitles = tasks.map(task => task.title);
         }
