@@ -72,6 +72,44 @@ export default function TaskControlPage() {
   const [draftRecipient, setDraftRecipient] = useState('')
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; timestamp?: Date }>>([])
   const [sendingMessage, setSendingMessage] = useState(false)
+  const [performingEmailAction, setPerformingEmailAction] = useState(false)
+
+  const handleEmailAction = async () => {
+    if (!task || !task.emailIntent) return
+    
+    setPerformingEmailAction(true)
+    try {
+      const response = await fetch(`/api/tasks/${task._id}/execute-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emailIntent: task.emailIntent,
+          title: task.title,
+          description: task.description,
+          emailDraft: task.emailDraft, // Pass the AI-generated draft
+        }),
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        alert('Email action completed successfully!')
+        // Refresh task
+        const taskResponse = await fetch(`/api/tasks/${task._id}`)
+        if (taskResponse.ok) {
+          const updatedTask = await taskResponse.json()
+          setTask(updatedTask)
+        }
+      } else {
+        alert(`Failed to execute email action: ${result.message}`)
+      }
+    } catch (error) {
+      console.error('Error executing email action:', error)
+      alert('Error executing email action')
+    } finally {
+      setPerformingEmailAction(false)
+    }
+  }
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -826,6 +864,19 @@ ${task.description || 'Your message content here'}`
 
             {/* ⚙️ ACTION BUTTONS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-12">
+              {task.type === 'EMAIL_ACTION' && task.emailIntent && (
+                <Button
+                  onClick={handleEmailAction}
+                  disabled={performingEmailAction}
+                  className="h-16 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2"
+                >
+                  <Mail size={16}/> 
+                  {performingEmailAction ? 'Processing...' : 
+                    task.emailIntent === 'READ' ? 'Read Email' :
+                    task.emailIntent === 'DRAFT' ? 'Draft Email' :
+                    task.emailIntent === 'SEND' ? 'Send Email' : 'Email Action'}
+                </Button>
+              )}
               {task.executionStatus === 'failed' && (
                 <Button
                   onClick={handleRetryExecution}
